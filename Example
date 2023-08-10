@@ -1,5 +1,480 @@
 import * as React from "react";
 import {
+  DetailsList,
+  DetailsListLayoutMode,
+  Selection,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { MarqueeSelection } from "@fluentui/react/lib/MarqueeSelection";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import { Image, ImageFit } from "@fluentui/react/lib/Image";
+import { initializeIcons } from "@fluentui/react";
+initializeIcons();
+interface CustomPanelFooterProps {
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const CustomPanelFooter: React.FC<CustomPanelFooterProps> = ({
+  onSave,
+  onCancel,
+}) => (
+  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <DefaultButton
+      onClick={onCancel}
+      text="Cancel"
+      style={{ marginRight: 8 }}
+    />
+    <PrimaryButton onClick={onSave} text="Save" />
+  </div>
+);
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+  description: string;
+  thumbnail: string;
+  images: string[];
+}
+
+const columns: IColumn[] = [
+  { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+  {
+    key: "title",
+    name: "Title",
+    fieldName: "title",
+    minWidth: 100,
+    maxWidth: 200,
+    isResizable: true,
+  },
+  {
+    key: "brand",
+    name: "Brand",
+    fieldName: "brand",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "category",
+    name: "Category",
+    fieldName: "category",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "rating",
+    name: "Rating",
+    fieldName: "rating",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "stock",
+    name: "Stock",
+    fieldName: "stock",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "price",
+    name: "Price",
+    fieldName: "price",
+    minWidth: 80,
+    maxWidth: 120,
+  },
+  {
+    key: "discountPercentage",
+    name: "Discount %",
+    fieldName: "discountPercentage",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+];
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [selectionDetails, setSelectionDetails] = React.useState("");
+  const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(
+    undefined
+  );
+  const [isSortedDescending, setIsSortedDescending] =
+    React.useState<boolean>(false);
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<IProduct | null>(null);
+
+  React.useEffect(() => {
+    fetch("https://dummyjson.com/products")
+      .then((response) => response.json())
+      .then((data) => setItems(data.products))
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
+
+  const selection = new Selection({
+    onSelectionChanged: () => {
+      setSelectionDetails(
+        selection.getSelectedCount() === 1
+          ? "1 item selected: " + selection.getSelection()[0]
+          : `${selection.getSelectedCount()} items selected`
+      );
+    },
+  });
+
+  const onColumnClick = (
+    ev: React.MouseEvent<HTMLElement>,
+    column: IColumn
+  ): void => {
+    const newIsSortedDescending = !isSortedDescending;
+
+    setItems(
+      [...items].sort((a, b) => {
+        if (column.key === "id") {
+          return newIsSortedDescending ? b.id - a.id : a.id - b.id;
+        } else if (column.key === "title") {
+          return newIsSortedDescending
+            ? b.title.localeCompare(a.title)
+            : a.title.localeCompare(b.title);
+        } else if (column.key === "brand") {
+          return newIsSortedDescending
+            ? b.brand.localeCompare(a.brand)
+            : a.brand.localeCompare(b.brand);
+        } else if (column.key === "category") {
+          return newIsSortedDescending
+            ? b.category.localeCompare(a.category)
+            : a.category.localeCompare(b.category);
+        } else if (column.key === "rating") {
+          return newIsSortedDescending
+            ? b.rating - a.rating
+            : a.rating - b.rating;
+        } else if (column.key === "stock") {
+          return newIsSortedDescending ? b.stock - a.stock : a.stock - b.stock;
+        } else if (column.key === "price") {
+          return newIsSortedDescending ? b.price - a.price : a.price - b.price;
+        } else if (column.key === "discountPercentage") {
+          return newIsSortedDescending
+            ? b.discountPercentage - a.discountPercentage
+            : a.discountPercentage - b.discountPercentage;
+        }
+        return 0;
+      })
+    );
+
+    setSortedColumn(column.key);
+    setIsSortedDescending(newIsSortedDescending);
+  };
+
+  const openPanel = (item: IProduct) => {
+    setSelectedItem(item);
+    setIsPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setSelectedItem(null);
+    setIsPanelOpen(false);
+  };
+
+  const savePanel = () => {
+    // Handle save logic
+    closePanel();
+  };
+
+  return (
+    <div>
+      <div>{selectionDetails}</div>
+      <MarqueeSelection selection={selection}>
+        <DetailsList
+          items={items}
+          columns={columns.map((col) => ({
+            ...col,
+            isSorted: col.key === sortedColumn,
+            isSortedDescending: isSortedDescending,
+            onColumnClick: onColumnClick,
+            onRender: (item?: any, index?: number, column?: IColumn) => {
+              if (column && column.key === "title") {
+                return (
+                  <a href="#" onClick={() => openPanel(item as IProduct)}>
+                    {(item as IProduct).title}
+                  </a>
+                );
+              } else {
+                const cellValue = item[column?.fieldName as keyof IProduct];
+                return <span>{cellValue}</span>;
+              }
+            },
+          }))}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selection={selection}
+          selectionMode={SelectionMode.multiple}
+          isHeaderVisible={true}
+          className={classNames.table}
+        />
+      </MarqueeSelection>
+      <Panel
+        isOpen={isPanelOpen}
+        type={PanelType.largeFixed}
+        // onRenderHeader={() => (
+        //   <div
+        //     style={{
+        //       borderBottom: "1px solid #ccc",
+        //       display: "flex",
+        //       justifyContent: "space-between",
+        //       alignItems: "center",
+        //       padding: "10px",
+        //     }}
+        //   >
+        //     <h2 style={{ margin: "0" }}>
+        //       {selectedItem ? selectedItem.title : "Product Details"}
+        //     </h2>
+        //     <DefaultButton
+        //       text="X"
+        //       onClick={closePanel}
+        //       styles={{ root: { border: "none" } }}
+        //     />
+        //   </div>
+        // )}
+
+        onRenderHeader={() => (
+          <div
+            style={{
+              borderBottom: "2px solid rgb(0, 120, 212)",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <DefaultButton
+                text={selectedItem ? selectedItem.title : "Product Details"}
+                styles={{ root: { border: "none" } }}
+              />
+            </div>
+          </div>
+        )}
+        // onRenderHeader={() => (
+        //   <div
+        //     style={{
+        //       borderBottom: "1px solid #ccc",
+        //       display: "flex",
+        //       justifyContent: "space-between",
+        //     }}
+        //   >
+        //     <div style={{ textAlign: "left" }}>
+        //       <DefaultButton
+        //         text={selectedItem ? selectedItem.title : "Product Details"}
+        //         styles={{ root: { border: "none" } }}
+        //       />
+        //     </div>
+        //   </div>
+        // )}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+      >
+        <div
+          style={{ borderBottom: "1px solid #ccc", marginTop: "10px" }}
+        ></div>
+        {selectedItem && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "30% 70%",
+              gap: "10px",
+              marginTop: "30px",
+            }}
+          >
+            <div>
+              <p>
+                {/* <strong>ID:</strong> */}
+                ID
+              </p>
+              <p>
+                {/* <strong>Title:</strong> */}
+                Title
+              </p>
+              <p>
+                {/* <strong>Brand:</strong> */}
+                Brand
+              </p>
+              <p>
+                <strong>Category:</strong>
+              </p>
+              <p>
+                <strong>Rating:</strong>
+              </p>
+              <p>
+                <strong>Stock:</strong>
+              </p>
+              <p>
+                <strong>Price:</strong>
+              </p>
+              <p>
+                <strong>Discount %:</strong>
+              </p>
+              <p>
+                <strong>Description:</strong>
+              </p>
+            </div>
+            <div>
+              <p>{selectedItem.id}</p>
+              <p>{selectedItem.title}</p>
+              <p>{selectedItem.brand}</p>
+              <p>{selectedItem.category}</p>
+              <p>{selectedItem.rating}</p>
+              <p>{selectedItem.stock}</p>
+              <p>{selectedItem.price}</p>
+              <p>{selectedItem.discountPercentage}</p>
+              <p>{selectedItem.description}</p>
+              <div style={{ display: "flex", marginTop: "10px" }}>
+                {selectedItem.images.map((image, index) => (
+                  <Image
+                    key={index}
+                    src={image}
+                    alt={`Image ${index}`}
+                    width={100}
+                    height={100}
+                    imageFit={ImageFit.cover}
+                    style={{ marginRight: 10 }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div
+          style={{ borderBottom: "1px solid #ccc", marginTop: "10px" }}
+        ></div>
+      </Panel>
+
+      {/* <Panel
+        isOpen={isPanelOpen}
+        type={PanelType.medium}
+        headerText={selectedItem ? selectedItem.title : "Product Details"}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+      >
+        {selectedItem && (
+          <div>
+            <p>ID: {selectedItem.id}</p>
+            <p>Title: {selectedItem.title}</p>
+            <p>Brand: {selectedItem.brand}</p>
+            <p>Category: {selectedItem.category}</p>
+            <p>Rating: {selectedItem.rating}</p>
+            <p>Stock: {selectedItem.stock}</p>
+            <p>Price: {selectedItem.price}</p>
+            <p>Discount %: {selectedItem.discountPercentage}</p>
+            <p>Description: {selectedItem.description}</p>
+            <div>
+              {selectedItem.images.map((image, index) => (
+                <Image
+                  key={index}
+                  src={image}
+                  alt={`Image ${index}`}
+                  width={100}
+                  height={100}
+                  imageFit={ImageFit.cover}
+                  style={{ marginRight: 10 }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </Panel> */}
+      {/* <Panel
+        isOpen={isPanelOpen}
+        type={PanelType.medium}
+        headerText={selectedItem ? selectedItem.title : "Product Details"}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+      >
+        {selectedItem && (
+          <div style={{ display: "flex" }}>
+            <div style={{ flex: "1", marginRight: "20px" }}>
+              <Image
+                src={selectedItem.thumbnail}
+                alt={selectedItem.title}
+                width={200}
+                height={200}
+                imageFit={ImageFit.cover}
+              />
+            </div>
+            <div style={{ flex: "1" }}>
+              <p>
+                <strong>ID:</strong> {selectedItem.id}
+              </p>
+              <p>
+                <strong>Title:</strong> {selectedItem.title}
+              </p>
+              <p>
+                <strong>Brand:</strong> {selectedItem.brand}
+              </p>
+              <p>
+                <strong>Category:</strong> {selectedItem.category}
+              </p>
+              <p>
+                <strong>Rating:</strong> {selectedItem.rating}
+              </p>
+              <p>
+                <strong>Stock:</strong> {selectedItem.stock}
+              </p>
+              <p>
+                <strong>Price:</strong> {selectedItem.price}
+              </p>
+              <p>
+                <strong>Discount %:</strong> {selectedItem.discountPercentage}
+              </p>
+              <p>
+                <strong>Description:</strong> {selectedItem.description}
+              </p>
+              <div style={{ display: "flex", marginTop: "10px" }}>
+                {selectedItem.images.map((image, index) => (
+                  <Image
+                    key={index}
+                    src={image}
+                    alt={`Image ${index}`}
+                    width={100}
+                    height={100}
+                    imageFit={ImageFit.cover}
+                    style={{ marginRight: 10 }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Panel> */}
+    </div>
+  );
+};
+
+export default MyList;
+
+//////////////////////////////////////////////
+import * as React from "react";
+import {
   CommandBar,
   ICommandBarItemProps,
   initializeIcons,

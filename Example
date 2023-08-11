@@ -1,3 +1,829 @@
+import React from "react";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import { IColumn } from "@fluentui/react";
+import { Checkbox } from "@fluentui/react/lib/Checkbox";
+
+const panelContentStyles = {
+  padding: "16px",
+};
+
+const checkboxLabelStyles = {
+  fontFamily: "Segoe UI, Arial, sans-serif",
+  fontWeight: "normal",
+  marginLeft: "8px",
+};
+
+interface ColumnCustomizationPanelProps {
+  headerText: string;
+  defaultColumnscount: number;
+  columns: IColumn[];
+  onClose: () => void;
+  onSave: (selectedColumns: IColumn[]) => void;
+}
+
+const MyPanel: React.FC<ColumnCustomizationPanelProps> = ({
+  headerText,
+  defaultColumnscount,
+  columns,
+  onClose,
+  onSave,
+}) => {
+  const [selectedColumnsMap, setSelectedColumnsMap] = React.useState<
+    Map<string, boolean>
+  >(new Map());
+
+  // Initialize selectedColumnsMap with disabled columns checked
+  React.useEffect(() => {
+    const initialSelectedColumns = columns.reduce((map, col) => {
+      if (!col.isFiltered) {
+        map.set(col.key, true);
+      }
+      return map;
+    }, new Map<string, boolean>());
+    setSelectedColumnsMap(initialSelectedColumns);
+  }, [columns]);
+
+  const toggleColumnVisibility = (key: string) => {
+    setSelectedColumnsMap((prevMap) => {
+      const updatedMap = new Map(prevMap);
+      updatedMap.set(key, !prevMap.get(key));
+      return updatedMap;
+    });
+  };
+
+  const noOfColumnsSelected = Array.from(selectedColumnsMap.values()).filter(
+    Boolean
+  ).length;
+
+  function getSelectedCheckboxKeys(): string {
+    const selectedKeys: string[] = [];
+    selectedColumnsMap.forEach((value, key) => {
+      debugger;
+      if (value) {
+        selectedKeys.push(key);
+      }
+    });
+    console.log(selectedKeys);
+    return selectedKeys.join(",");
+  }
+
+  return (
+    <Panel
+      style={{ marginTop: "50px", marginBottom: "40px" }}
+      isOpen={true}
+      type={PanelType.smallFixedFar}
+      headerText={headerText + " (" + noOfColumnsSelected + ")"}
+      onDismiss={onClose}
+      closeButtonAriaLabel="Close"
+      isFooterAtBottom={true}
+      onRenderFooterContent={() => (
+        <div style={{ display: "flex", justifyContent: "left" }}>
+          <PrimaryButton
+            //onClick={getSelectedCheckboxKeys}
+            onClick={() => {
+              const selectedColumns: IColumn[] = [];
+              selectedColumnsMap.forEach((value, key) => {
+                if (value && columns.find((col) => col.key === key)) {
+                  selectedColumns.push(columns.find((col) => col.key === key)!);
+                }
+              });
+              onSave(selectedColumns);
+            }}
+            text="Apply"
+            style={{ marginRight: 25, marginLeft: "30px" }}
+            disabled={noOfColumnsSelected === 0 + defaultColumnscount}
+          />
+          <DefaultButton onClick={onClose} text="Cancel" />
+        </div>
+      )}
+    >
+      <div style={panelContentStyles}>
+        {columns.map((col) => (
+          <div key={col.key} style={{ marginBottom: "25px" }}>
+            <Checkbox
+              label={col.name}
+              checked={selectedColumnsMap.get(col.key) || false}
+              disabled={!col.isFiltered}
+              onChange={() => toggleColumnVisibility(col.key)}
+              styles={{
+                label: checkboxLabelStyles,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+};
+
+export default MyPanel;
+
+// import React from "react";
+// import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+// import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+// import { IColumn } from "@fluentui/react";
+// import { Checkbox } from "@fluentui/react/lib/Checkbox";
+
+// const panelContentStyles = {
+//   padding: "16px",
+// };
+
+// const checkboxLabelStyles = {
+//   fontFamily: "Segoe UI, Arial, sans-serif",
+//   fontWeight: "normal",
+//   marginLeft: "8px",
+// };
+
+// interface ColumnCustomizationPanelProps {
+//   headerText: string;
+//   columns: IColumn[];
+//   onClose: () => void;
+//   onSave: (selectedColumns: IColumn[]) => void;
+// }
+
+// const MyPanel: React.FC<ColumnCustomizationPanelProps> = ({
+//   headerText,
+//   columns,
+//   onClose,
+//   onSave,
+// }) => {
+//   const [selectedColumns, setSelectedColumns] = React.useState<IColumn[]>(() =>
+//     columns.map((col) => ({
+//       ...col,
+//       isVisible: false,
+//     }))
+//   );
+
+//   const toggleColumnVisibility = (key: any) => {
+//     //debugger;
+//     setSelectedColumns((prevColumns: any) =>
+//       prevColumns.map((col: any) =>
+//         col.key === key ? { ...col, isVisible: !col.isVisible } : col
+//       )
+//     );
+//   };
+//   //let noOfColumnsSelected = 0;
+//   //console.log(selectedColumns);
+//   const noOfColumnsSelected = selectedColumns.filter(
+//     (col) => !col.isFiltered
+//   ).length;
+
+//   return (
+//     <Panel
+//       style={{ marginTop: "50px", marginBottom: "40px" }}
+//       isOpen={true}
+//       type={PanelType.smallFixedFar}
+//       headerText={headerText + " (" + noOfColumnsSelected + ")"}
+//       onDismiss={onClose}
+//       closeButtonAriaLabel="Close"
+//       isFooterAtBottom={true}
+//       onRenderFooterContent={() => (
+//         <div style={{ display: "flex", justifyContent: "flex-end" }}>
+//           <DefaultButton
+//             onClick={onClose}
+//             text="Cancel"
+//             style={{ marginRight: 8 }}
+//           />
+//           <PrimaryButton onClick={() => onSave(selectedColumns)} text="Apply" />
+//         </div>
+//       )}
+//     >
+//       <div style={panelContentStyles}>
+//         {selectedColumns.map((col: any) => (
+//           <div key={col.key} style={{ marginBottom: "25px" }}>
+//             <Checkbox
+//               label={col.name}
+//               checked={col.isFiltered ? col.isVisible : !col.isVisible}
+//               disabled={!col.isFiltered}
+//               onChange={() => toggleColumnVisibility(col.key)}
+//               styles={{
+//                 label: checkboxLabelStyles,
+//               }}
+//             />
+//           </div>
+//         ))}
+//       </div>
+//     </Panel>
+//   );
+// };
+
+// export default MyPanel;
+
+// // import React from "react";
+// // import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+// // import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+// // import { Toggle } from "@fluentui/react/lib/Toggle";
+// // import { IColumn } from "@fluentui/react";
+
+// // const panelContentStyles = {
+// //   padding: "16px",
+// //   fontFamily: "Segoe UI, Segoe UI Web (West European)",
+// // };
+
+// // interface ColumnCustomizationPanelProps {
+// //   columns: IColumn[];
+// //   onClose: () => void;
+// //   onSave: (selectedColumns: IColumn[]) => void;
+// // }
+
+// // const MyPanel: React.FC<ColumnCustomizationPanelProps> = ({
+// //   columns,
+// //   onClose,
+// //   onSave,
+// // }) => {
+// //   const [selectedColumns, setSelectedColumns] = React.useState<IColumn[]>(() =>
+// //     columns.map((col) => ({
+// //       ...col,
+// //       isVisible: true,
+// //     }))
+// //   );
+
+// //   const toggleColumnVisibility = (key: any) => {
+// //     setSelectedColumns((prevColumns: any) =>
+// //       prevColumns.map((col: any) =>
+// //         col.key === key ? { ...col, isVisible: !col.isVisible } : col
+// //       )
+// //     );
+// //   };
+
+// //   return (
+// //     <Panel
+// //       isOpen={true}
+// //       type={PanelType.smallFixedFar}
+// //       headerText="Column Customization"
+// //       onDismiss={onClose}
+// //       closeButtonAriaLabel="Close"
+// //       isFooterAtBottom={true}
+// //       onRenderFooterContent={() => (
+// //         <div style={{ display: "flex", justifyContent: "flex-end" }}>
+// //           <DefaultButton
+// //             onClick={onClose}
+// //             text="Cancel"
+// //             style={{ marginRight: 8 }}
+// //           />
+// //           <PrimaryButton onClick={() => onSave(selectedColumns)} text="Apply" />
+// //         </div>
+// //       )}
+// //     >
+// //       <div style={panelContentStyles}>
+// //         {selectedColumns.map((col: any) => (
+// //           <div key={col.key} style={{ marginBottom: "8px" }}>
+// //             <Toggle
+// //               checked={col.isVisible}
+// //               onChange={() => toggleColumnVisibility(col.key)}
+// //               label={col.name}
+// //               styles={{
+// //                 root: { fontFamily: "Segoe UI, Segoe UI Web (West European)" },
+// //               }}
+// //             />
+// //           </div>
+// //         ))}
+// //       </div>
+// //     </Panel>
+// //   );
+// // };
+
+// // export default MyPanel;
+
+// // import React from "react";
+// // import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+// // import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+// // import { IColumn } from "@fluentui/react";
+
+// // interface ColumnCustomizationPanelProps {
+// //   columns: IColumn[];
+// //   onClose: () => void;
+// //   onSave: (selectedColumns: IColumn[]) => void;
+// // }
+
+// // const MyPanel: React.FC<ColumnCustomizationPanelProps> = ({
+// //   columns,
+// //   onClose,
+// //   onSave,
+// // }) => {
+// //   const [selectedColumns, setSelectedColumns] = React.useState<IColumn[]>(() =>
+// //     columns.map((col) => ({
+// //       ...col,
+// //       isVisible: true,
+// //     }))
+// //   );
+
+// //   const toggleColumnVisibility = (key: any) => {
+// //     setSelectedColumns((prevColumns: any) =>
+// //       prevColumns.map((col: any) =>
+// //         col.key === key ? { ...col, isVisible: !col.isVisible } : col
+// //       )
+// //     );
+// //   };
+
+// //   return (
+// //     <Panel
+// //       isOpen={true}
+// //       type={PanelType.smallFixedFar}
+// //       headerText="Column Customization"
+// //       onDismiss={onClose}
+// //       closeButtonAriaLabel="Close"
+// //       isFooterAtBottom={true}
+// //       onRenderFooterContent={() => (
+// //         <div style={{ display: "flex", justifyContent: "flex-end" }}>
+// //           <DefaultButton
+// //             onClick={onClose}
+// //             text="Cancel"
+// //             style={{ marginRight: 8 }}
+// //           />
+// //           <PrimaryButton onClick={() => onSave(selectedColumns)} text="Apply" />
+// //         </div>
+// //       )}
+// //     >
+// //       <div style={{ padding: "16px" }}>
+// //         {selectedColumns.map((col: any) => (
+// //           <div key={col.key} style={{ marginBottom: "8px" }}>
+// //             <label>
+// //               <input
+// //                 type="checkbox"
+// //                 checked={col.isVisible}
+// //                 onChange={() => toggleColumnVisibility(col.key)}
+// //               />
+// //               <span style={{ marginLeft: "8px", fontWeight: "bold" }}>
+// //                 {col.name}
+// //               </span>
+// //             </label>
+// //           </div>
+// //         ))}
+// //       </div>
+// //     </Panel>
+// //   );
+// // };
+
+// // export default MyPanel;
+
+
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  Selection,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { MarqueeSelection } from "@fluentui/react/lib/MarqueeSelection";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import {
+  FluentTheme,
+  Icon,
+  TooltipHost,
+  initializeIcons,
+} from "@fluentui/react";
+import MyPanel from "../MyPanel";
+import axios from "axios";
+
+initializeIcons();
+interface CustomPanelFooterProps {
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const CustomPanelFooter: React.FC<CustomPanelFooterProps> = ({
+  onSave,
+  onCancel,
+}) => (
+  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <DefaultButton
+      onClick={onCancel}
+      text="Cancel"
+      style={{ marginRight: 8 }}
+    />
+    <PrimaryButton onClick={onSave} text="Save" />
+  </div>
+);
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+// const columns: IColumn[] = [
+//   { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+//   {
+//     key: "title",
+//     name: "Title",
+//     fieldName: "title",
+//     minWidth: 100,
+//     maxWidth: 200,
+//     isResizable: true,
+//   },
+//   {
+//     key: "brand",
+//     name: "Brand",
+//     fieldName: "brand",
+//     minWidth: 100,
+//     maxWidth: 150,
+//   },
+
+//   {
+//     key: "rating",
+//     name: "Rating",
+//     fieldName: "rating",
+//     minWidth: 50,
+//     maxWidth: 100,
+//   },
+//   {
+//     key: "price",
+//     name: "Price",
+//     fieldName: "price",
+//     minWidth: 80,
+//     maxWidth: 120,
+//   },
+// ];
+
+const columns1: IColumn[] = [
+  { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+  {
+    key: "title",
+    name: "Title",
+    fieldName: "title",
+    minWidth: 100,
+    maxWidth: 200,
+    isResizable: true,
+  },
+  {
+    key: "brand",
+    name: "Brand",
+    fieldName: "brand",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "category",
+    name: "Category",
+    fieldName: "category",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "rating",
+    name: "Rating",
+    fieldName: "rating",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "stock",
+    name: "Stock",
+    fieldName: "stock",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "price",
+    name: "Price",
+    fieldName: "price",
+    minWidth: 80,
+    maxWidth: 120,
+  },
+  {
+    key: "discountPercentage",
+    name: "Discount %",
+    fieldName: "discountPercentage",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+];
+const columns: IColumn[] = [
+  {
+    key: "id",
+    name: "ID",
+    fieldName: "id",
+    minWidth: 50,
+    maxWidth: 100,
+    isFiltered: false,
+  },
+  {
+    key: "title",
+    name: "Title",
+    fieldName: "title",
+    minWidth: 100,
+    maxWidth: 200,
+    isResizable: true,
+    isFiltered: false,
+  },
+  {
+    key: "brand",
+    name: "Brand",
+    fieldName: "brand",
+    minWidth: 100,
+    maxWidth: 150,
+    isFiltered: false,
+  },
+
+  {
+    key: "rating",
+    name: "Rating",
+    fieldName: "rating",
+    minWidth: 50,
+    maxWidth: 100,
+    isFiltered: false,
+  },
+  {
+    key: "price",
+    name: "Price",
+    fieldName: "price",
+    minWidth: 80,
+    maxWidth: 120,
+    isFiltered: false,
+  },
+];
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [selectionDetails, setSelectionDetails] = React.useState("");
+  const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(
+    undefined
+  );
+  const [isSortedDescending, setIsSortedDescending] =
+    React.useState<boolean>(false);
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<IProduct | null>(null);
+
+  ////  panel block
+  const [isColumnCustomizationPanelOpen, setIsColumnCustomizationPanelOpen] =
+    React.useState(false);
+  const [Mycolumns, setColumns] = React.useState<IColumn[]>(columns); // Initialize with your initial columns
+
+  const openMyPanel = () => {
+    setIsColumnCustomizationPanelOpen(true);
+  };
+
+  const closeColumnCustomizationPanel = () => {
+    setIsColumnCustomizationPanelOpen(false);
+  };
+
+  const applyColumnCustomization = (selectedColumns: any) => {
+    //alert("called");
+    console.log(selectedColumns);
+    //setColumns(selectedColumns);
+    closeColumnCustomizationPanel();
+  };
+  ////
+
+  // React.useEffect(() => {
+  //   fetch("https://dummyjson.com/products")
+  //     .then((response) => response.json())
+  //     .then((data) => setItems(data.products))
+  //     .catch((error) => console.error("Error fetching data:", error));
+  // }, []);
+
+  const selection = new Selection({
+    onSelectionChanged: () => {
+      // setSelectionDetails(
+      //   selection.getSelectedCount() === 1
+      //     ? "1 item selected: " + selection.getSelection()[0]
+      //     : `${selection.getSelectedCount()} items selected`
+      // );
+    },
+  });
+
+  const onColumnClick = (
+    ev: React.MouseEvent<HTMLElement>,
+    column: IColumn
+  ): void => {
+    const newIsSortedDescending = !isSortedDescending;
+
+    setItems(
+      [...items].sort((a, b) => {
+        //debugger;
+        if (column.key === "id") {
+          return newIsSortedDescending ? b.id - a.id : a.id - b.id;
+        } else if (column.key === "title") {
+          return newIsSortedDescending
+            ? b.title.localeCompare(a.title)
+            : a.title.localeCompare(b.title);
+        } else if (column.key === "brand") {
+          return newIsSortedDescending
+            ? b.brand.localeCompare(a.brand)
+            : a.brand.localeCompare(b.brand);
+        } else if (column.key === "category") {
+          return newIsSortedDescending
+            ? b.category.localeCompare(a.category)
+            : a.category.localeCompare(b.category);
+        } else if (column.key === "rating") {
+          return newIsSortedDescending
+            ? b.rating - a.rating
+            : a.rating - b.rating;
+        } else if (column.key === "stock") {
+          return newIsSortedDescending ? b.stock - a.stock : a.stock - b.stock;
+        } else if (column.key === "price") {
+          return newIsSortedDescending ? b.price - a.price : a.price - b.price;
+        } else if (column.key === "discountPercentage") {
+          return newIsSortedDescending
+            ? b.discountPercentage - a.discountPercentage
+            : a.discountPercentage - b.discountPercentage;
+        }
+        return 0;
+      })
+    );
+
+    setSortedColumn(column.key);
+    setIsSortedDescending(newIsSortedDescending);
+  };
+
+  const openPanel = (item: IProduct) => {
+    setSelectedItem(item);
+    setIsPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setSelectedItem(null);
+    setIsPanelOpen(false);
+  };
+
+  const savePanel = () => {
+    // Handle save logic
+    closePanel();
+  };
+
+  const onSyncClick = () => {
+    fetchItems();
+  };
+
+  const fetchItems = async () => {
+    try {
+      const response = await axios.get("https://dummyjson.com/products");
+
+      const fetchedColumns = Object.keys(response.data.products[0]).map(
+        (key) => ({
+          key: key,
+          name: key,
+          fieldName: key,
+          minWidth: 50,
+          maxWidth: 150,
+          isFiltered:
+            key === "id" || key === "title" || key === "brand" ? false : true,
+        })
+      );
+
+      setColumns(fetchedColumns);
+      setItems(response.data.products);
+      console.log(fetchedColumns);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  React.useEffect(() => {
+    //fetchItems();
+  }, []);
+
+  // const fetchItems = () => {
+  //   fetch("https://dummyjson.com/products")
+  //     .then((response) => response.json())
+  //     .then((data) => setItems(data.products))
+  //     .catch((error) => console.error("Error fetching data:", error));
+  // };
+  //// columns menu
+
+  //// column menu
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: "10px",
+          color: FluentTheme.palette.themePrimary,
+        }}
+      >
+        <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+        <TooltipHost content="Refresh">
+          <Icon
+            iconName="Sync"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginRight: "10px",
+            }}
+            aria-label="Sync"
+            onClick={onSyncClick}
+          />
+        </TooltipHost>
+        <TooltipHost content="Apply Filter">
+          <Icon
+            iconName="Filter"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+            }}
+            aria-label="Filter"
+          />
+        </TooltipHost>
+        <TooltipHost content="Customize Columns">
+          <Icon
+            iconName="Table"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+            onClick={openMyPanel}
+          />
+        </TooltipHost>
+
+        {isColumnCustomizationPanelOpen && (
+          <MyPanel
+            headerText="Choose Columns"
+            defaultColumnscount={3}
+            columns={Mycolumns}
+            onClose={closeColumnCustomizationPanel}
+            onSave={applyColumnCustomization}
+          />
+        )}
+      </div>
+
+      <div>{selectionDetails}</div>
+      <MarqueeSelection selection={selection}>
+        <DetailsList
+          items={items}
+          columns={columns.map((col) => ({
+            ...col,
+            isSorted: col.key === sortedColumn,
+            isSortedDescending: isSortedDescending,
+            onColumnClick: onColumnClick,
+            onRender: (item?: any, index?: number, column?: IColumn) => {
+              if (column && column.key === "title") {
+                return (
+                  <a href="#" onClick={() => openPanel(item as IProduct)}>
+                    {(item as IProduct).title}
+                  </a>
+                );
+              } else {
+                const cellValue = item[column?.fieldName as keyof IProduct];
+                return <span>{cellValue}</span>;
+              }
+            },
+          }))}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selection={selection}
+          selectionMode={SelectionMode.multiple}
+          isHeaderVisible={true}
+          className={classNames.table}
+        />
+      </MarqueeSelection>
+      <Panel
+        isOpen={isPanelOpen}
+        type={PanelType.smallFixedFar}
+        headerText={selectedItem ? selectedItem.title : "Product Details"}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+      >
+        {selectedItem && (
+          <div>
+            <p>ID: {selectedItem.id}</p>
+            <p>Title: {selectedItem.title}</p>
+            <p>Brand: {selectedItem.brand}</p>
+            <p>Category: {selectedItem.category}</p>
+            <p>Rating: {selectedItem.rating}</p>
+            <p>Stock: {selectedItem.stock}</p>
+            <p>Price: {selectedItem.price}</p>
+            <p>Discount %: {selectedItem.discountPercentage}</p>
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+};
+
+export default MyList;
+
+
+
+
 import * as React from "react";
 import {
   DetailsList,

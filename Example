@@ -589,6 +589,865 @@ const MyList = () => {
 
 export default MyList;
 
+/////
+
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  Selection,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { MarqueeSelection } from "@fluentui/react/lib/MarqueeSelection";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import { initializeIcons } from "@fluentui/react";
+initializeIcons();
+interface CustomPanelFooterProps {
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const CustomPanelFooter: React.FC<CustomPanelFooterProps> = ({
+  onSave,
+  onCancel,
+}) => (
+  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <DefaultButton
+      onClick={onCancel}
+      text="Cancel"
+      style={{ marginRight: 8 }}
+    />
+    <PrimaryButton onClick={onSave} text="Save" />
+  </div>
+);
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+const columns: IColumn[] = [
+  { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+  {
+    key: "title",
+    name: "Title",
+    fieldName: "title",
+    minWidth: 100,
+    maxWidth: 200,
+    isResizable: true,
+  },
+  {
+    key: "brand",
+    name: "Brand",
+    fieldName: "brand",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "category",
+    name: "Category",
+    fieldName: "category",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "rating",
+    name: "Rating",
+    fieldName: "rating",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "stock",
+    name: "Stock",
+    fieldName: "stock",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "price",
+    name: "Price",
+    fieldName: "price",
+    minWidth: 80,
+    maxWidth: 120,
+  },
+  {
+    key: "discountPercentage",
+    name: "Discount %",
+    fieldName: "discountPercentage",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+];
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [selectionDetails, setSelectionDetails] = React.useState("");
+  const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(
+    undefined
+  );
+  const [isSortedDescending, setIsSortedDescending] =
+    React.useState<boolean>(false);
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<IProduct | null>(null);
+
+  React.useEffect(() => {
+    fetch("https://dummyjson.com/products")
+      .then((response) => response.json())
+      .then((data) => setItems(data.products))
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
+
+  const selection = new Selection({
+    onSelectionChanged: () => {
+      // setSelectionDetails(
+      //   selection.getSelectedCount() === 1
+      //     ? "1 item selected: " + selection.getSelection()[0]
+      //     : `${selection.getSelectedCount()} items selected`
+      // );
+    },
+  });
+
+  const onColumnClick = (
+    ev: React.MouseEvent<HTMLElement>,
+    column: IColumn
+  ): void => {
+    const newIsSortedDescending = !isSortedDescending;
+
+    setItems(
+      [...items].sort((a, b) => {
+        //debugger;
+        if (column.key === "id") {
+          return newIsSortedDescending ? b.id - a.id : a.id - b.id;
+        } else if (column.key === "title") {
+          return newIsSortedDescending
+            ? b.title.localeCompare(a.title)
+            : a.title.localeCompare(b.title);
+        } else if (column.key === "brand") {
+          return newIsSortedDescending
+            ? b.brand.localeCompare(a.brand)
+            : a.brand.localeCompare(b.brand);
+        } else if (column.key === "category") {
+          return newIsSortedDescending
+            ? b.category.localeCompare(a.category)
+            : a.category.localeCompare(b.category);
+        } else if (column.key === "rating") {
+          return newIsSortedDescending
+            ? b.rating - a.rating
+            : a.rating - b.rating;
+        } else if (column.key === "stock") {
+          return newIsSortedDescending ? b.stock - a.stock : a.stock - b.stock;
+        } else if (column.key === "price") {
+          return newIsSortedDescending ? b.price - a.price : a.price - b.price;
+        } else if (column.key === "discountPercentage") {
+          return newIsSortedDescending
+            ? b.discountPercentage - a.discountPercentage
+            : a.discountPercentage - b.discountPercentage;
+        }
+        return 0;
+      })
+    );
+
+    setSortedColumn(column.key);
+    setIsSortedDescending(newIsSortedDescending);
+  };
+
+  const openPanel = (item: IProduct) => {
+    setSelectedItem(item);
+    setIsPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setSelectedItem(null);
+    setIsPanelOpen(false);
+  };
+
+  const savePanel = () => {
+    // Handle save logic
+    closePanel();
+  };
+
+  return (
+    <div>
+      <div>{selectionDetails}</div>
+      <MarqueeSelection selection={selection}>
+        <DetailsList
+          items={items}
+          columns={columns.map((col) => ({
+            ...col,
+            isSorted: col.key === sortedColumn,
+            isSortedDescending: isSortedDescending,
+            onColumnClick: onColumnClick,
+            onRender: (item?: any, index?: number, column?: IColumn) => {
+              if (column && column.key === "title") {
+                return (
+                  <a href="#" onClick={() => openPanel(item as IProduct)}>
+                    {(item as IProduct).title}
+                  </a>
+                );
+              } else {
+                const cellValue = item[column?.fieldName as keyof IProduct];
+                return <span>{cellValue}</span>;
+              }
+            },
+          }))}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selection={selection}
+          selectionMode={SelectionMode.multiple}
+          isHeaderVisible={true}
+          className={classNames.table}
+        />
+      </MarqueeSelection>
+      <Panel
+        isOpen={isPanelOpen}
+        type={PanelType.smallFixedFar}
+        headerText={selectedItem ? selectedItem.title : "Product Details"}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+        // footerButtons={
+        //   <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        //     <DefaultButton
+        //       onClick={closePanel}
+        //       text="Cancel"
+        //       style={{ marginRight: 8 }}
+        //     />
+        //     <PrimaryButton onClick={closePanel} text="Save" />
+        //   </div>
+        // }
+      >
+        {selectedItem && (
+          <div>
+            <p>ID: {selectedItem.id}</p>
+            <p>Title: {selectedItem.title}</p>
+            <p>Brand: {selectedItem.brand}</p>
+            <p>Category: {selectedItem.category}</p>
+            <p>Rating: {selectedItem.rating}</p>
+            <p>Stock: {selectedItem.stock}</p>
+            <p>Price: {selectedItem.price}</p>
+            <p>Discount %: {selectedItem.discountPercentage}</p>
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+};
+
+export default MyList;
+
+
+
+/////////////////////
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  Selection,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { MarqueeSelection } from "@fluentui/react/lib/MarqueeSelection";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import { Image, ImageFit } from "@fluentui/react/lib/Image";
+import {
+  initializeIcons,
+  CommandBar,
+  ICommandBarItemProps,
+  Dropdown,
+  TextField,
+  FluentTheme,
+  Checkbox,
+} from "@fluentui/react";
+import { Icon } from "@fluentui/react/lib/Icon";
+initializeIcons();
+interface CustomPanelFooterProps {
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const CustomPanelFooter: React.FC<CustomPanelFooterProps> = ({
+  onSave,
+  onCancel,
+}) => (
+  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <DefaultButton
+      onClick={onCancel}
+      text="Cancel"
+      style={{ marginRight: 8 }}
+    />
+    <PrimaryButton onClick={onSave} text="Save" />
+  </div>
+);
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+  description: string;
+  thumbnail: string;
+  images: string[];
+}
+
+const columns: IColumn[] = [
+  { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+  {
+    key: "title",
+    name: "Title",
+    fieldName: "title",
+    minWidth: 100,
+    maxWidth: 200,
+    isResizable: true,
+  },
+  {
+    key: "brand",
+    name: "Brand",
+    fieldName: "brand",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "category",
+    name: "Category",
+    fieldName: "category",
+    minWidth: 100,
+    maxWidth: 150,
+  },
+  {
+    key: "rating",
+    name: "Rating",
+    fieldName: "rating",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "stock",
+    name: "Stock",
+    fieldName: "stock",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+  {
+    key: "price",
+    name: "Price",
+    fieldName: "price",
+    minWidth: 80,
+    maxWidth: 120,
+  },
+  {
+    key: "discountPercentage",
+    name: "Discount %",
+    fieldName: "discountPercentage",
+    minWidth: 50,
+    maxWidth: 100,
+  },
+];
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [selectionDetails, setSelectionDetails] = React.useState("");
+  const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(
+    undefined
+  );
+  const [isSortedDescending, setIsSortedDescending] =
+    React.useState<boolean>(false);
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<IProduct | null>(null);
+
+  React.useEffect(() => {
+    fetch("https://dummyjson.com/products")
+      .then((response) => response.json())
+      .then((data) => setItems(data.products))
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
+
+  const selection = new Selection({
+    onSelectionChanged: () => {
+      setSelectionDetails(
+        selection.getSelectedCount() === 1
+          ? "1 item selected: " + selection.getSelection()[0]
+          : `${selection.getSelectedCount()} items selected`
+      );
+    },
+  });
+
+  const onColumnClick = (
+    ev: React.MouseEvent<HTMLElement>,
+    column: IColumn
+  ): void => {
+    const newIsSortedDescending = !isSortedDescending;
+
+    setItems(
+      [...items].sort((a, b) => {
+        if (column.key === "id") {
+          return newIsSortedDescending ? b.id - a.id : a.id - b.id;
+        } else if (column.key === "title") {
+          return newIsSortedDescending
+            ? b.title.localeCompare(a.title)
+            : a.title.localeCompare(b.title);
+        } else if (column.key === "brand") {
+          return newIsSortedDescending
+            ? b.brand.localeCompare(a.brand)
+            : a.brand.localeCompare(b.brand);
+        } else if (column.key === "category") {
+          return newIsSortedDescending
+            ? b.category.localeCompare(a.category)
+            : a.category.localeCompare(b.category);
+        } else if (column.key === "rating") {
+          return newIsSortedDescending
+            ? b.rating - a.rating
+            : a.rating - b.rating;
+        } else if (column.key === "stock") {
+          return newIsSortedDescending ? b.stock - a.stock : a.stock - b.stock;
+        } else if (column.key === "price") {
+          return newIsSortedDescending ? b.price - a.price : a.price - b.price;
+        } else if (column.key === "discountPercentage") {
+          return newIsSortedDescending
+            ? b.discountPercentage - a.discountPercentage
+            : a.discountPercentage - b.discountPercentage;
+        }
+        return 0;
+      })
+    );
+
+    setSortedColumn(column.key);
+    setIsSortedDescending(newIsSortedDescending);
+  };
+
+  const openPanel = (item: IProduct) => {
+    setSelectedItem(item);
+    setIsPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setSelectedItem(null);
+    setIsPanelOpen(false);
+  };
+
+  const savePanel = () => {
+    // Handle save logic
+    closePanel();
+  };
+
+  const commandBarItems: ICommandBarItemProps[] = [
+    {
+      key: "view",
+      text: "View",
+      iconProps: { iconName: "View" },
+      onClick: () => handleViewClick(),
+    },
+    {
+      key: "edit",
+      text: "Edit",
+      iconProps: { iconName: "Edit" },
+      onClick: () => handleEditClick(),
+      disabled: true,
+      styles: {
+        root: { cursor: "not-allowed" },
+      },
+      buttonStyles: {
+        labelDisabled: { cursor: "not-allowed" },
+        iconDisabled: { cursor: "not-allowed" },
+      },
+    },
+    {
+      key: "delete",
+      text: "Delete",
+      iconProps: { iconName: "Delete" },
+      onClick: () => handleDeleteClick(),
+    },
+    {
+      key: "cancel",
+      text: "Cancel",
+      iconProps: { iconName: "Cancel" },
+      onClick: () => handleCancelClick(),
+    },
+    {
+      key: "approve",
+      text: "Approve",
+      iconProps: { iconName: "CheckMark" },
+      onClick: () => handleApproveClick(),
+    },
+    {
+      key: "refresh",
+      text: "Refresh",
+      iconProps: { iconName: "Refresh" },
+      onClick: () => handleRefreshClick(),
+    },
+  ];
+
+  const handleViewClick = () => {
+    // Handle the View action here
+  };
+
+  const handleEditClick = () => {
+    // Handle the Edit action here
+  };
+
+  const handleDeleteClick = () => {
+    // Handle the Delete action here
+  };
+
+  const handleCancelClick = () => {
+    // Handle the Cancel action here
+  };
+
+  const handleApproveClick = () => {
+    // Handle the Approve action here
+  };
+
+  const handleRefreshClick = () => {
+    // Handle the Approve action here
+  };
+
+  //const [items, setItems] = React.useState<IProduct[]>([]);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = React.useState(false);
+  const [filterBrand, setFilterBrand] = React.useState<string | undefined>(
+    undefined
+  );
+  const [filterCategory, setFilterCategory] = React.useState<
+    string | undefined
+  >(undefined);
+  const [filterTitle, setFilterTitle] = React.useState<string | undefined>(
+    undefined
+  );
+
+  const handleFilterIconClick = () => {
+    setIsFilterPanelOpen(true);
+  };
+
+  const handleFilterPanelDismiss = () => {
+    setIsFilterPanelOpen(false);
+  };
+
+  const handleApplyFilter = () => {
+    // Apply the filters and fetch the filtered data from the API
+    const filteredItems = items.filter((item) => {
+      const matchesBrand = !filterBrand || item.brand === filterBrand;
+      const matchesCategory =
+        !filterCategory || item.category === filterCategory;
+      const matchesTitle =
+        !filterTitle ||
+        item.title.toLowerCase().includes(filterTitle.toLowerCase());
+      return matchesBrand && matchesCategory && matchesTitle;
+    });
+
+    setItems(filteredItems);
+    setIsFilterPanelOpen(false);
+  };
+
+  const handleCancelFilter = () => {
+    setFilterBrand(undefined);
+    setFilterCategory(undefined);
+    setFilterTitle(undefined);
+    setIsFilterPanelOpen(false);
+  };
+
+  //columns filter
+  const [columns, setColumns] = React.useState<IColumn[]>([
+    // Define your default columns here
+    // Example:
+    { key: "id", name: "ID", fieldName: "id", minWidth: 50, maxWidth: 100 },
+    {
+      key: "title",
+      name: "Title",
+      fieldName: "title",
+      minWidth: 100,
+      maxWidth: 200,
+      isResizable: true,
+    },
+    // ... (other columns)
+  ]);
+  const [isColumnPanelOpen, setIsColumnPanelOpen] = React.useState(false);
+  const [selectedColumns, setSelectedColumns] = React.useState<string[]>(
+    columns.map((col) => col.key)
+  );
+
+  // ... (existing code)
+
+  const handleColumnIconClick = () => {
+    setIsColumnPanelOpen(true);
+  };
+
+  const handleColumnPanelDismiss = () => {
+    setIsColumnPanelOpen(false);
+  };
+
+  const handleApplyColumns = () => {
+    const updatedColumns = columns.filter((col) =>
+      selectedColumns.includes(col.key)
+    );
+    setColumns(updatedColumns);
+    setIsColumnPanelOpen(false);
+  };
+  return (
+    <div>
+      <div
+        style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}
+      >
+        <h2 style={{ marginRight: "auto" }}>MyRequestList</h2>
+        <Icon
+          iconName="Filter"
+          style={{
+            cursor: "pointer",
+            color: FluentTheme.palette.themePrimary, // Change color to Fluent UI primary color
+            fontSize: "20px", // Adjust font size as needed
+            transition: "color 0.3s", // Add transition effect for color change
+          }}
+          title="Apply Filter"
+          onClick={handleFilterIconClick}
+        />
+
+        <Icon
+          iconName="Table"
+          style={{
+            cursor: "pointer",
+            color: FluentTheme.palette.themePrimary,
+            fontSize: "20px",
+            transition: "color 0.3s",
+            marginLeft: "10px",
+          }}
+          title="Customize Columns"
+          onClick={handleColumnIconClick}
+        />
+      </div>
+      <div>{selectionDetails}</div>
+      <MarqueeSelection selection={selection}>
+        <DetailsList
+          items={items}
+          columns={columns.map((col) => ({
+            ...col,
+            isSorted: col.key === sortedColumn,
+            isSortedDescending: isSortedDescending,
+            onColumnClick: onColumnClick,
+            onRender: (item?: any, index?: number, column?: IColumn) => {
+              if (column && column.key === "title") {
+                return (
+                  <a href="#" onClick={() => openPanel(item as IProduct)}>
+                    {(item as IProduct).title}
+                  </a>
+                );
+              } else {
+                const cellValue = item[column?.fieldName as keyof IProduct];
+                return <span>{cellValue}</span>;
+              }
+            },
+          }))}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selection={selection}
+          selectionMode={SelectionMode.multiple}
+          isHeaderVisible={true}
+          className={classNames.table}
+        />
+      </MarqueeSelection>
+      <Panel
+        style={{ marginTop: "50px", marginBottom: "40px" }}
+        isOpen={isPanelOpen}
+        type={PanelType.largeFixed}
+        headerText={selectedItem ? selectedItem.title : "Product Details"}
+        onDismiss={closePanel}
+        closeButtonAriaLabel="Close"
+        isFooterAtBottom={true}
+        onRenderFooterContent={() => (
+          <CustomPanelFooter onSave={savePanel} onCancel={closePanel} />
+        )}
+      >
+        <div style={{ float: "right", marginBottom: "3px" }}>
+          <CommandBar items={commandBarItems} />
+        </div>
+
+        {selectedItem && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "30% 70%",
+              gap: "10px",
+              marginTop: "30px",
+            }}
+          >
+            <div>
+              <p>
+                {/* <strong>ID:</strong> */}
+                ID
+              </p>
+              <p>
+                {/* <strong>Title:</strong> */}
+                Title
+              </p>
+              <p>
+                {/* <strong>Brand:</strong> */}
+                Brand
+              </p>
+              <p>
+                <strong>Category:</strong>
+              </p>
+              <p>
+                <strong>Rating:</strong>
+              </p>
+              <p>
+                <strong>Stock:</strong>
+              </p>
+              <p>
+                <strong>Price:</strong>
+              </p>
+              <p>
+                <strong>Discount %:</strong>
+              </p>
+              <p>
+                <strong>Description:</strong>
+              </p>
+            </div>
+            <div>
+              <p>{selectedItem.id}</p>
+              <p>{selectedItem.title}</p>
+              <p>{selectedItem.brand}</p>
+              <p>{selectedItem.category}</p>
+              <p>{selectedItem.rating}</p>
+              <p>{selectedItem.stock}</p>
+              <p>{selectedItem.price}</p>
+              <p>{selectedItem.discountPercentage}</p>
+              <p>{selectedItem.description}</p>
+              <div style={{ display: "flex", marginTop: "10px" }}>
+                {selectedItem.images.map((image, index) => (
+                  <Image
+                    key={index}
+                    src={image}
+                    alt={`Image ${index}`}
+                    width={100}
+                    height={100}
+                    imageFit={ImageFit.cover}
+                    style={{ marginRight: 10 }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div
+          style={{ borderBottom: "1px solid #ccc", marginTop: "10px" }}
+        ></div>
+      </Panel>
+
+      <Panel
+        isOpen={isFilterPanelOpen}
+        type={PanelType.smallFixedFar}
+        style={{ marginTop: "50px", marginBottom: "40px" }}
+        headerText="Apply Filters"
+        onDismiss={handleFilterPanelDismiss}
+        closeButtonAriaLabel="Close"
+        onRenderFooterContent={() => (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <DefaultButton
+              onClick={handleCancelFilter}
+              text="Cancel"
+              style={{ marginRight: 8 }}
+            />
+            <PrimaryButton onClick={handleApplyFilter} text="Apply" />
+          </div>
+        )}
+      >
+        <Dropdown
+          label="Brand"
+          options={[
+            { key: "", text: "" },
+            { key: "brand1", text: "Brand 1" },
+            { key: "brand2", text: "Brand 2" },
+            // ... Add more options
+          ]}
+          selectedKey={filterBrand}
+          onChange={(_, option) => setFilterBrand(option?.key as string)}
+        />
+        <Dropdown
+          label="Category"
+          options={[
+            { key: "", text: "" },
+            { key: "category1", text: "Category 1" },
+            { key: "category2", text: "Category 2" },
+            // ... Add more options
+          ]}
+          selectedKey={filterCategory}
+          onChange={(_, option) => setFilterCategory(option?.key as string)}
+        />
+        <TextField
+          label="Title"
+          value={filterTitle}
+          onChange={(_, newValue) => setFilterTitle(newValue)}
+        />
+      </Panel>
+
+      {/* Customize Column Panel */}
+      <Panel
+        isOpen={isColumnPanelOpen}
+        type={PanelType.smallFixedFar}
+        style={{ marginTop: "50px", marginBottom: "40px" }}
+        headerText="Customize Columns"
+        onDismiss={handleColumnPanelDismiss}
+        closeButtonAriaLabel="Close"
+        onRenderFooterContent={() => (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <DefaultButton
+              onClick={handleColumnPanelDismiss}
+              text="Cancel"
+              style={{ marginRight: 8 }}
+            />
+            <PrimaryButton onClick={handleApplyColumns} text="Apply" />
+          </div>
+        )}
+      >
+        {columns.map((col) => (
+          <Checkbox
+            key={col.key}
+            label={col.name}
+            checked={selectedColumns.includes(col.key)}
+            onChange={(_: any, checked: any) => {
+              if (checked) {
+                setSelectedColumns((prevColumns) => [...prevColumns, col.key]);
+              } else {
+                setSelectedColumns((prevColumns) =>
+                  prevColumns.filter((key) => key !== col.key)
+                );
+              }
+            }}
+          />
+        ))}
+      </Panel>
+    </div>
+  );
+};
+
+export default MyList;
+
 
 /////////////////////////////
 

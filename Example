@@ -1,3 +1,160 @@
+/////
+Plane code
+
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  Selection,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { MarqueeSelection } from "@fluentui/react/lib/MarqueeSelection";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import { Panel, PanelType } from "@fluentui/react/lib/Panel";
+import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import {
+  FluentTheme,
+  Icon,
+  TooltipHost,
+  initializeIcons,
+} from "@fluentui/react";
+import axios from "axios";
+initializeIcons();
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+  const [dynamicColumns, setDynamicColumns] = React.useState<IColumn[]>([]);
+
+  React.useEffect(() => {
+    refreshData(["id", "title"]);
+  }, []);
+
+  function GetProducts(columns: string[]) {
+    axios
+      .get("https://dummyjson.com/products")
+      .then((response: { data: any }) => {
+        const data = response.data;
+        // Dynamically generate columns based on the response
+        const responseColumns = columns.map((col) => ({
+          key: col,
+          name: col.charAt(0).toUpperCase() + col.slice(1),
+          fieldName: col,
+          minWidth: 50,
+          maxWidth: 150,
+        }));
+        // Filter data based on selected columns
+        const filteredData = data.products.map((product: IProduct) => {
+          const filteredProduct: any = {};
+          columns.forEach((col) => {
+            filteredProduct[col] = product[col as keyof IProduct]; // Use type assertion
+          });
+          return filteredProduct;
+        });
+
+        setItems(filteredData);
+        setDynamicColumns(responseColumns);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }
+  const selection = new Selection({
+    onSelectionChanged: () => {},
+  });
+  const refreshData = (columns: string[]) => {
+    setSelectedColumns(columns);
+    GetProducts(columns);
+  };
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: "10px",
+          color: FluentTheme.palette.themePrimary,
+        }}
+      >
+        <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+        <TooltipHost content="Refresh">
+          <Icon
+            iconName="Sync"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginRight: "10px",
+            }}
+            aria-label="Sync"
+            onClick={() =>
+              refreshData(["id", "title", "brand", "category", "rating"])
+            }
+          />
+        </TooltipHost>
+        <TooltipHost content="Apply Filter">
+          <Icon
+            iconName="Filter"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+            }}
+            aria-label="Filter"
+          />
+        </TooltipHost>
+        <TooltipHost content="Customize Columns">
+          <Icon
+            iconName="Table"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+          />
+        </TooltipHost>
+      </div>
+
+      <MarqueeSelection selection={selection}>
+        <DetailsList
+          items={items}
+          columns={dynamicColumns}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selection={selection}
+          selectionMode={SelectionMode.multiple}
+          isHeaderVisible={true}
+          className={classNames.table}
+        />
+      </MarqueeSelection>
+    </div>
+  );
+};
+
+export default MyList;
+
+
+////////////////////
 import React from "react";
 import { Panel, PanelType } from "@fluentui/react/lib/Panel";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";

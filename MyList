@@ -1,0 +1,233 @@
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import {
+  Panel,
+  PanelType,
+  PrimaryButton,
+  DefaultButton,
+  Checkbox,
+} from "@fluentui/react";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import {
+  FluentTheme,
+  Icon,
+  TooltipHost,
+  initializeIcons,
+} from "@fluentui/react";
+import axios from "axios";
+initializeIcons();
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+  panel: {
+    padding: "20px",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [columns, setColumns] = React.useState<IColumn[]>([]);
+  const [showPanel, setShowPanel] = React.useState<boolean>(false);
+  const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    GetProducts();
+  }, []);
+
+  function GetProducts() {
+    axios
+      .get("https://dummyjson.com/products")
+      .then((response: { data: any }) => {
+        const data = response.data;
+        const responseColumns: IColumn[] = Object.keys(data.products[0]).map(
+          (col) => ({
+            key: col,
+            name: col.charAt(0).toUpperCase() + col.slice(1),
+            fieldName: col,
+            minWidth: 80,
+            maxWidth: 150,
+            isResizable: true,
+            isSorted: false,
+            isSortedDescending: false,
+          })
+        );
+
+        setItems(data.products);
+        setColumns(responseColumns);
+        setSelectedColumns(responseColumns.map((col) => col.key));
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }
+
+  const onColumnClick = (
+    ev: React.MouseEvent<HTMLElement, MouseEvent>,
+    column?: IColumn
+  ): void => {
+    if (column) {
+      const newColumns = columns.map((col) => ({
+        ...col,
+        isSorted: col.key === column.key,
+        isSortedDescending: col.key === column.key && !col.isSortedDescending,
+      }));
+
+      setColumns(newColumns);
+
+      const sortedItems = [...items].sort((a, b) => {
+        const aValue = a[column.fieldName as keyof IProduct];
+        const bValue = b[column.fieldName as keyof IProduct];
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          // Numeric comparison
+          return column.isSortedDescending ? bValue - aValue : aValue - bValue;
+        }
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          // String comparison
+          return column.isSortedDescending
+            ? bValue.localeCompare(aValue)
+            : aValue.localeCompare(bValue);
+        }
+
+        return 0; // Fallback for other types (e.g., undefined)
+      });
+
+      setItems(sortedItems);
+    }
+  };
+
+  const togglePanel = () => {
+    setShowPanel(!showPanel);
+  };
+
+  const applyChanges = () => {
+    setShowPanel(false);
+  };
+
+  const selectAllColumns = () => {
+    setSelectedColumns(columns.map((col) => col.key));
+  };
+
+  const clearAllColumns = () => {
+    setSelectedColumns([]);
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: "10px",
+          color: FluentTheme.palette.themePrimary,
+        }}
+      >
+        <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+        <TooltipHost content="Refresh">
+          <Icon
+            iconName="Sync"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginRight: "10px",
+            }}
+            aria-label="Sync"
+            onClick={() => GetProducts()}
+          />
+        </TooltipHost>
+        <TooltipHost content="Customize Columns">
+          <Icon
+            iconName="Table"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+            onClick={togglePanel}
+          />
+        </TooltipHost>
+      </div>
+
+      <DetailsList
+        items={items}
+        columns={columns.filter((col) => selectedColumns.includes(col.key))}
+        setKey="set"
+        layoutMode={DetailsListLayoutMode.justified}
+        selectionMode={SelectionMode.none}
+        isHeaderVisible={true}
+        onColumnHeaderClick={onColumnClick as any}
+        className={classNames.table}
+      />
+
+      <Panel
+        isOpen={showPanel}
+        type={PanelType.smallFixedFar}
+        headerText="Customize Columns"
+        onDismiss={togglePanel}
+      >
+        <div className={classNames.panel}>
+          <div>
+            <Checkbox
+              label="Select All"
+              checked={selectedColumns.length === columns.length}
+              onChange={(ev, checked) => {
+                if (checked) {
+                  selectAllColumns();
+                } else {
+                  clearAllColumns();
+                }
+              }}
+            />
+          </div>
+          {columns.map((col) => (
+            <Checkbox
+              key={col.key}
+              label={col.name}
+              checked={selectedColumns.includes(col.key)}
+              onChange={(ev, checked) => {
+                setSelectedColumns((prevSelectedColumns) =>
+                  checked
+                    ? [...prevSelectedColumns, col.key]
+                    : prevSelectedColumns.filter((key) => key !== col.key)
+                );
+              }}
+            />
+          ))}
+          <PrimaryButton
+            style={{ marginTop: "20px" }}
+            text="Apply"
+            onClick={applyChanges}
+          />
+          <DefaultButton
+            style={{ marginTop: "10px" }}
+            text="Cancel"
+            onClick={togglePanel}
+          />
+        </div>
+      </Panel>
+    </div>
+  );
+};
+
+export default MyList;

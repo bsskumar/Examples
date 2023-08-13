@@ -1,0 +1,736 @@
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  SelectionMode,
+  IColumn,
+  CheckboxVisibility,
+} from "@fluentui/react/lib/DetailsList";
+import {
+  Panel,
+  PanelType,
+  PrimaryButton,
+  DefaultButton,
+  Checkbox,
+  ShimmeredDetailsList,
+  ContextualMenu,
+  DirectionalHint,
+  IContextualMenuItem,
+  IContextualMenuProps,
+  Link,
+} from "@fluentui/react";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import {
+  FluentTheme,
+  Icon,
+  TooltipHost,
+  initializeIcons,
+} from "@fluentui/react";
+import axios from "axios";
+import FilterPanel from "./FilterPanel";
+import MainFilter, { MainFilters } from "./MainFilter";
+initializeIcons();
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+const defaultSelectedColumns = ["id", "title", "brand", "category"];
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+  panel: {
+    padding: "20px",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [columns, setColumns] = React.useState<IColumn[]>([]);
+  const [showPanel, setShowPanel] = React.useState<boolean>(false);
+  const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+  const [tempSelectedColumns, setTempSelectedColumns] = React.useState<
+    string[]
+  >([]);
+  const [contextualMenuProps, setContextualMenuProps] = React.useState<
+    IContextualMenuProps | undefined
+  >();
+
+  React.useEffect(() => {
+    GetProducts(defaultSelectedColumns);
+  }, []);
+
+  function GetProducts(selectedCols: string[]) {
+    axios
+      .get("https://dummyjson.com/products")
+      .then((response: { data: any }) => {
+        const data = response.data;
+        const responseColumns: IColumn[] = Object.keys(data.products[0]).map(
+          (col) => ({
+            key: col,
+            name: col.charAt(0).toUpperCase() + col.slice(1),
+            fieldName: col,
+            minWidth: 80,
+            maxWidth: 150,
+            isResizable: true,
+            isSorted: false,
+            isSortedDescending: false,
+            isFiltered: true,
+          })
+        );
+
+        setItems(data.products);
+        setColumns(responseColumns);
+
+        const newSelectedColumns = selectedCols.filter((col) =>
+          responseColumns.some((colObj) => colObj.key === col)
+        );
+
+        setSelectedColumns(newSelectedColumns);
+        setTempSelectedColumns(newSelectedColumns);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }
+
+  const onColumnClick = (
+    ev?: React.MouseEvent<HTMLElement, MouseEvent>,
+    column?: IColumn
+  ): void => {
+    if (column && ev) {
+      const menuItems: IContextualMenuItem[] = [
+        // {
+        //   key: "filter",
+        //   text: "FilterBy",
+        //   onClick: () => {
+        //     // Implement your filter logic here
+        //   },
+        // },
+        ...(["brand", "category", "title"].includes(column.key)
+          ? [
+              {
+                key: "filter",
+                text: "FilterBy",
+                onClick: () => {
+                  // Implement your filter logic here
+                  openFilterPanel(column.key);
+                },
+              },
+            ]
+          : []),
+        {
+          key: "sort",
+          text: "Sort",
+          onClick: () => {
+            sortItems(column);
+          },
+        },
+      ];
+
+      setContextualMenuProps({
+        items: menuItems,
+        target: ev.currentTarget as HTMLElement,
+        directionalHintFixed: true,
+        directionalHint: DirectionalHint.bottomRightEdge,
+        gapSpace: 10,
+        isBeakVisible: true,
+        onDismiss: () => setContextualMenuProps(undefined),
+      });
+    }
+  };
+
+  // const sortItems = (column: IColumn) => {
+  //   // Sorting logic
+  // };
+
+  const sortItems = (column: IColumn): void => {
+    const newIsSortedDescending = !column.isSortedDescending;
+
+    setItems(
+      [...items].sort((a, b) => {
+        if (column.key === "id") {
+          return newIsSortedDescending ? b.id - a.id : a.id - b.id;
+        } else if (column.key === "title") {
+          return newIsSortedDescending
+            ? b.title.localeCompare(a.title)
+            : a.title.localeCompare(b.title);
+        } else if (column.key === "brand") {
+          return newIsSortedDescending
+            ? b.brand.localeCompare(a.brand)
+            : a.brand.localeCompare(b.brand);
+        } else if (column.key === "category") {
+          return newIsSortedDescending
+            ? b.category.localeCompare(a.category)
+            : a.category.localeCompare(b.category);
+        } else if (column.key === "rating") {
+          return newIsSortedDescending
+            ? b.rating - a.rating
+            : a.rating - b.rating;
+        } else if (column.key === "stock") {
+          return newIsSortedDescending ? b.stock - a.stock : a.stock - b.stock;
+        } else if (column.key === "price") {
+          return newIsSortedDescending ? b.price - a.price : a.price - b.price;
+        } else if (column.key === "discountPercentage") {
+          return newIsSortedDescending
+            ? b.discountPercentage - a.discountPercentage
+            : a.discountPercentage - b.discountPercentage;
+        }
+        return 0;
+      })
+    );
+
+    // Update the sorting state of the column
+    setColumns((prevColumns) =>
+      prevColumns.map((col) =>
+        col.key === column.key
+          ? {
+              ...col,
+              isSorted: true,
+              isSortedDescending: newIsSortedDescending,
+            }
+          : { ...col, isSorted: false, isSortedDescending: false }
+      )
+    );
+  };
+
+  const togglePanel = () => {
+    setShowPanel(!showPanel);
+  };
+
+  const applyChanges = () => {
+    setSelectedColumns(tempSelectedColumns);
+    setShowPanel(false);
+  };
+
+  const selectAllColumns = () => {
+    setTempSelectedColumns(
+      columns
+        .map((col) => col.key)
+        .filter(
+          (key) =>
+            !defaultSelectedColumns.includes(key) ||
+            tempSelectedColumns.includes(key)
+        )
+    );
+  };
+
+  const clearAllColumns = () => {
+    setTempSelectedColumns([]);
+  };
+
+  const [filterPanelProps, setFilterPanelProps] = React.useState<{
+    isOpen: boolean;
+    columnName: string;
+    filterItems: { key: string; text: string }[];
+    selectedItems: string[];
+  }>({
+    isOpen: false,
+    columnName: "",
+    filterItems: [],
+    selectedItems: [],
+  });
+  const openFilterPanel = (columnName: string) => {
+    const filterItems = columns
+      .filter((col) => col.key === columnName)
+      .map((col) => ({
+        key: col.key,
+        text: col.name,
+      }));
+
+    setFilterPanelProps({
+      isOpen: true,
+      columnName,
+      filterItems,
+      selectedItems: tempSelectedColumns,
+    });
+  };
+
+  const applyFilter = () => {
+    // Implement your logic to apply the filters and call the API
+    // ...
+
+    closeFilterPanel();
+  };
+
+  const closeFilterPanel = () => {
+    setFilterPanelProps({
+      isOpen: false,
+      columnName: "",
+      filterItems: [],
+      selectedItems: [],
+    });
+  };
+
+  const toggleAllFilters = () => {
+    setFilterPanelProps((prevProps) => ({
+      ...prevProps,
+      selectedItems:
+        prevProps.selectedItems.length === prevProps.filterItems.length
+          ? []
+          : prevProps.filterItems.map((item) => item.key),
+    }));
+  };
+
+  const toggleFilterItem = (itemKey: string) => {
+    setFilterPanelProps((prevProps) => ({
+      ...prevProps,
+      selectedItems: prevProps.selectedItems.includes(itemKey)
+        ? prevProps.selectedItems.filter((key) => key !== itemKey)
+        : [...prevProps.selectedItems, itemKey],
+    }));
+  };
+
+  ////
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState<boolean>(false);
+  const applyMainFilters = (filters: MainFilters) => {
+    // Logging the filters to console
+    console.log("Selected Brand:", filters.brand);
+    console.log("Selected Category:", filters.category);
+    console.log("Title:", filters.title);
+
+    // Close the filter panel
+    setFilterPanelOpen(false);
+  };
+
+  const cancelMainFilters = () => {
+    // Close the filter panel
+    setFilterPanelOpen(false);
+  };
+  /////
+
+  //title column hyperlink start
+  const columnsWithHyperlink = columns.map((col) => {
+    return {
+      ...col,
+      onRender: (item: IProduct) => {
+        if (col.key === "title") {
+          return (
+            <a
+              href={`https://your-website-url/${item.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {item.title}
+            </a>
+          );
+        } else {
+          return <span>{(item as any)[col.key]}</span>; // Use type assertion here
+        }
+      },
+    };
+  });
+
+  const renderTitleColumn = (
+    item?: IProduct,
+    index?: number,
+    column?: IColumn
+  ) => {
+    if (!item || !column) {
+      return null;
+    }
+    return (
+      <a href="#" onClick={() => handleTitleClick(item)}>
+        {item[column.fieldName as keyof IProduct]}
+      </a>
+    );
+  };
+
+  const handleTitleClick = (item: IProduct) => {
+    // Handle the title click event here
+    console.log("Title clicked:", item.title);
+    // You can implement any logic you need when the title is clicked
+  };
+
+  // const columnsWithHyperlink = columns.map((col) => {
+  //   if (col.key === "title") {
+  //     return {
+  //       ...col,
+  //       onRender: (item: IProduct) => (
+  //         <a
+  //           href={`https://your-website-url/${item.id}`}
+  //           target="_blank"
+  //           rel="noopener noreferrer"
+  //         >
+  //           {item.title}
+  //         </a>
+  //       ),
+  //     };
+  //   }
+  //   return col;
+  // });
+
+  //title column hypelink end
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: "10px",
+          color: FluentTheme.palette.themePrimary,
+        }}
+      >
+        <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+        <TooltipHost content="Refresh">
+          <Icon
+            iconName="Sync"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginRight: "10px",
+            }}
+            aria-label="Sync"
+            onClick={() =>
+              GetProducts([
+                ...defaultSelectedColumns,
+                "price",
+                "rating",
+                "stock",
+              ])
+            }
+          />
+        </TooltipHost>
+
+        <TooltipHost content="Filter">
+          <Icon
+            iconName="Filter"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+            aria-label="Filter"
+            onClick={() => setFilterPanelOpen(true)}
+          />
+        </TooltipHost>
+
+        <TooltipHost content="Customize Columns">
+          <Icon
+            iconName="Table"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+            onClick={togglePanel}
+          />
+        </TooltipHost>
+      </div>
+
+      <ShimmeredDetailsList
+        items={items}
+        // columns={columns.filter(
+        //   (col) =>
+        //     selectedColumns.includes(col.key) ||
+        //     defaultSelectedColumns.includes(col.key)
+        // )}
+
+        columns={columns
+          .map((col) =>
+            col.key === "title" ? { ...col, onRender: renderTitleColumn } : col
+          )
+          .filter(
+            (col) =>
+              selectedColumns.includes(col.key) ||
+              defaultSelectedColumns.includes(col.key)
+          )}
+        // columns={columnsWithHyperlink}
+        // onRenderItemColumn={(item: any, col: any) => {
+        //   if (col.key === "title") {
+        //     return (
+        //       <Link href={`https://example.com/products/${item.id}`}>
+        //         {item.title}
+        //       </Link>
+        //     );
+        //   } else {
+        //     return item[col.key as keyof IProduct];
+        //   }
+        // }}
+        setKey="set"
+        layoutMode={DetailsListLayoutMode.justified}
+        selectionMode={SelectionMode.multiple}
+        selectionPreservedOnEmptyClick={true}
+        checkboxVisibility={CheckboxVisibility.always}
+        isHeaderVisible={true}
+        onColumnHeaderClick={onColumnClick}
+        className={classNames.table}
+      />
+
+      <Panel
+        style={{ marginTop: "50px", marginBottom: "40px" }}
+        isOpen={showPanel}
+        type={PanelType.smallFixedFar}
+        headerText="Customize Columns"
+        onDismiss={togglePanel}
+      >
+        <div className={classNames.panel}>
+          <div style={{ marginBottom: "15px" }}>
+            <Checkbox
+              label="Select All"
+              checked={
+                tempSelectedColumns.length ===
+                columns
+                  .map((col) => col.key)
+                  .filter(
+                    (key) =>
+                      !defaultSelectedColumns.includes(key) ||
+                      tempSelectedColumns.includes(key)
+                  ).length
+              }
+              onChange={(ev, checked) => {
+                if (checked) {
+                  selectAllColumns();
+                } else {
+                  clearAllColumns();
+                }
+              }}
+            />
+          </div>
+          {columns.map((col) => (
+            <div key={col.key} style={{ marginBottom: "15px" }}>
+              <Checkbox
+                key={col.key}
+                label={col.name}
+                checked={
+                  tempSelectedColumns.includes(col.key) ||
+                  defaultSelectedColumns.includes(col.key)
+                }
+                onChange={(ev, checked) => {
+                  if (!defaultSelectedColumns.includes(col.key)) {
+                    setTempSelectedColumns((prevSelectedColumns) =>
+                      checked
+                        ? [...prevSelectedColumns, col.key]
+                        : prevSelectedColumns.filter((key) => key !== col.key)
+                    );
+                  }
+                }}
+                disabled={defaultSelectedColumns.includes(col.key)}
+              />
+            </div>
+          ))}
+          <PrimaryButton
+            style={{ marginTop: "30px" }}
+            text="Apply"
+            onClick={applyChanges}
+          />
+          <DefaultButton
+            style={{ marginTop: "10px", marginLeft: "15px" }}
+            text="Cancel"
+            onClick={togglePanel}
+          />
+        </div>
+      </Panel>
+      <FilterPanel
+        isOpen={filterPanelProps.isOpen}
+        filterItems={filterPanelProps.filterItems}
+        selectedItems={filterPanelProps.selectedItems}
+        onApply={applyFilter}
+        onCancel={closeFilterPanel}
+        onToggleAll={toggleAllFilters}
+        onToggleItem={toggleFilterItem}
+      />
+
+      <MainFilter
+        onApply={applyMainFilters}
+        onCancel={cancelMainFilters}
+        isOpen={filterPanelOpen}
+      />
+      {contextualMenuProps && <ContextualMenu {...contextualMenuProps} />}
+    </div>
+  );
+};
+
+export default MyList;
+
+
+
+import React from "react";
+import {
+  Panel,
+  PanelType,
+  PrimaryButton,
+  DefaultButton,
+  Checkbox,
+} from "@fluentui/react";
+
+interface FilterPanelProps {
+  isOpen: boolean;
+  filterItems: { key: string; text: string }[];
+  selectedItems: string[];
+  onApply: () => void;
+  onCancel: () => void;
+  onToggleAll: () => void;
+  onToggleItem: (itemKey: string) => void;
+}
+
+const FilterPanel: React.FC<FilterPanelProps> = ({
+  isOpen,
+  filterItems,
+  selectedItems,
+  onApply,
+  onCancel,
+  onToggleAll,
+  onToggleItem,
+}) => {
+  return (
+    <Panel
+      style={{ marginTop: "50px", marginBottom: "40px" }}
+      isOpen={isOpen}
+      type={PanelType.smallFixedFar}
+      headerText="Filter By"
+      onDismiss={onCancel}
+    >
+      <div className="filter-panel" style={{ marginTop: "30px" }}>
+        <div style={{ marginBottom: "15px" }}>
+          <Checkbox
+            label="Select All"
+            checked={selectedItems.length === filterItems.length}
+            onChange={onToggleAll}
+          />
+        </div>
+        {filterItems.map((item) => (
+          <div key={item.key} style={{ marginBottom: "15px" }}>
+            <Checkbox
+              key={item.key}
+              label={item.text}
+              checked={selectedItems.includes(item.key)}
+              onChange={() => onToggleItem(item.key)}
+            />
+          </div>
+        ))}
+        <PrimaryButton
+          style={{ marginTop: "30px" }}
+          text="Apply"
+          onClick={onApply}
+        />
+        <DefaultButton
+          style={{ marginTop: "10px", marginLeft: "15px" }}
+          text="Cancel"
+          onClick={onCancel}
+        />
+      </div>
+    </Panel>
+  );
+};
+
+export default FilterPanel;
+
+import React, { useState } from "react";
+import {
+  Panel,
+  PrimaryButton,
+  DefaultButton,
+  Dropdown,
+  IDropdownOption,
+  TextField,
+  PanelType,
+} from "@fluentui/react";
+
+export interface MainFilters {
+  brand: string;
+  category: string;
+  title: string;
+}
+
+interface MainFilterProps {
+  isOpen: boolean;
+  onApply: (filters: MainFilters) => void;
+  onCancel: () => void;
+}
+
+const MainFilter: React.FC<MainFilterProps> = ({
+  isOpen,
+  onApply,
+  onCancel,
+}) => {
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [title, setTitle] = useState<string>("");
+
+  const brandOptions: IDropdownOption[] = [
+    { key: "brand1", text: "Brand 1" },
+    { key: "brand2", text: "Brand 2" },
+    { key: "brand3", text: "Brand 3" },
+  ];
+
+  const categoryOptions: IDropdownOption[] = [
+    { key: "category1", text: "Category 1" },
+    { key: "category2", text: "Category 2" },
+    { key: "category3", text: "Category 3" },
+  ];
+
+  const handleApply = () => {
+    const filters: MainFilters = {
+      brand: selectedBrand,
+      category: selectedCategory,
+      title,
+    };
+    onApply(filters);
+  };
+
+  const handleCancel = () => {
+    onCancel();
+  };
+
+  return (
+    <Panel
+      style={{ marginTop: "50px", marginBottom: "40px" }}
+      isOpen={isOpen}
+      type={PanelType.smallFixedFar}
+      headerText="Filter By"
+      onDismiss={handleCancel}
+    >
+      <div>
+        <Dropdown
+          label="Brand"
+          options={brandOptions}
+          selectedKey={selectedBrand}
+          onChange={(ev, option) =>
+            option && setSelectedBrand(option.key.toString())
+          }
+        />
+        <Dropdown
+          label="Category"
+          options={categoryOptions}
+          selectedKey={selectedCategory}
+          onChange={(ev, option) =>
+            option && setSelectedCategory(option.key.toString())
+          }
+        />
+        <TextField
+          label="Title"
+          placeholder="Enter Title Here...!!"
+          value={title}
+          onChange={(ev, newValue) => setTitle(newValue || "")}
+        />
+        <PrimaryButton
+          text="Apply"
+          onClick={handleApply}
+          style={{ marginTop: "30px" }}
+        />
+        <DefaultButton
+          text="Cancel"
+          onClick={handleCancel}
+          style={{ marginTop: "10px", marginLeft: "15px" }}
+        />
+      </div>
+    </Panel>
+  );
+};
+
+export default MainFilter;

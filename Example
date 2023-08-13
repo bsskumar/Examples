@@ -1,3 +1,1177 @@
+import * as React from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  SelectionMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import {
+  Panel,
+  PanelType,
+  PrimaryButton,
+  DefaultButton,
+  Checkbox,
+  ShimmeredDetailsList,
+  ContextualMenu,
+  DirectionalHint,
+  IContextualMenuItem,
+  IContextualMenuProps,
+} from "@fluentui/react";
+import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+import {
+  FluentTheme,
+  Icon,
+  TooltipHost,
+  initializeIcons,
+} from "@fluentui/react";
+import axios from "axios";
+initializeIcons();
+
+interface IProduct {
+  id: number;
+  title: string;
+  brand: string;
+  category: string;
+  rating: number;
+  stock: number;
+  price: number;
+  discountPercentage: number;
+}
+
+const defaultSelectedColumns = ["id", "title", "brand", "category"];
+
+const classNames = mergeStyleSets({
+  table: {
+    margin: "auto",
+  },
+  panel: {
+    padding: "20px",
+  },
+});
+
+const MyList = () => {
+  const [items, setItems] = React.useState<IProduct[]>([]);
+  const [columns, setColumns] = React.useState<IColumn[]>([]);
+  const [showPanel, setShowPanel] = React.useState<boolean>(false);
+  const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+  const [tempSelectedColumns, setTempSelectedColumns] = React.useState<
+    string[]
+  >([]);
+  const [contextualMenuProps, setContextualMenuProps] = React.useState<
+    IContextualMenuProps | undefined
+  >();
+
+  React.useEffect(() => {
+    GetProducts(defaultSelectedColumns);
+  }, []);
+
+  function GetProducts(selectedCols: string[]) {
+    axios
+      .get("https://dummyjson.com/products")
+      .then((response: { data: any }) => {
+        const data = response.data;
+        const responseColumns: IColumn[] = Object.keys(data.products[0]).map(
+          (col) => ({
+            key: col,
+            name: col.charAt(0).toUpperCase() + col.slice(1),
+            fieldName: col,
+            minWidth: 80,
+            maxWidth: 150,
+            isResizable: true,
+            isSorted: false,
+            isSortedDescending: false,
+            isFiltered: true,
+          })
+        );
+
+        setItems(data.products);
+        setColumns(responseColumns);
+
+        const newSelectedColumns = selectedCols.filter((col) =>
+          responseColumns.some((colObj) => colObj.key === col)
+        );
+
+        setSelectedColumns(newSelectedColumns);
+        setTempSelectedColumns(newSelectedColumns);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }
+
+  const onColumnClick = (
+    ev?: React.MouseEvent<HTMLElement, MouseEvent>,
+    column?: IColumn
+  ): void => {
+    if (column && ev) {
+      const menuItems: IContextualMenuItem[] = [
+        {
+          key: "filter",
+          text: "FilterBy",
+          onClick: () => {
+            // Implement your filter logic here
+          },
+        },
+        {
+          key: "sort",
+          text: "Sort",
+          onClick: () => {
+            sortItems(column);
+          },
+        },
+      ];
+
+      setContextualMenuProps({
+        items: menuItems,
+        target: ev.currentTarget as HTMLElement,
+        directionalHintFixed: true,
+        directionalHint: DirectionalHint.bottomRightEdge,
+        gapSpace: 10,
+        isBeakVisible: true,
+        onDismiss: () => setContextualMenuProps(undefined),
+      });
+    }
+  };
+
+  const sortItems = (column: IColumn) => {
+    // Sorting logic
+  };
+
+  const togglePanel = () => {
+    setShowPanel(!showPanel);
+  };
+
+  const applyChanges = () => {
+    setSelectedColumns(tempSelectedColumns);
+    setShowPanel(false);
+  };
+
+  const selectAllColumns = () => {
+    // Select all columns logic
+  };
+
+  const clearAllColumns = () => {
+    // Clear all columns logic
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: "10px",
+          color: FluentTheme.palette.themePrimary,
+        }}
+      >
+        <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+        <TooltipHost content="Refresh">
+          <Icon
+            iconName="Sync"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginRight: "10px",
+            }}
+            aria-label="Sync"
+            onClick={() =>
+              GetProducts([
+                ...defaultSelectedColumns,
+                "price",
+                "rating",
+                "stock",
+              ])
+            }
+          />
+        </TooltipHost>
+        <TooltipHost content="Customize Columns">
+          <Icon
+            iconName="Table"
+            style={{
+              cursor: "pointer",
+              color: FluentTheme.palette.themePrimary,
+              fontSize: "20px",
+              transition: "color 0.3s",
+              marginLeft: "10px",
+            }}
+            onClick={togglePanel}
+          />
+        </TooltipHost>
+      </div>
+
+      <ShimmeredDetailsList
+        items={items}
+        columns={columns.filter(
+          (col) =>
+            selectedColumns.includes(col.key) ||
+            defaultSelectedColumns.includes(col.key)
+        )}
+        setKey="set"
+        layoutMode={DetailsListLayoutMode.justified}
+        selectionMode={SelectionMode.none}
+        isHeaderVisible={true}
+        onColumnHeaderClick={onColumnClick}
+        className={classNames.table}
+      />
+
+      <Panel
+        style={{ marginTop: "50px", marginBottom: "40px" }}
+        isOpen={showPanel}
+        type={PanelType.smallFixedFar}
+        headerText="Customize Columns"
+        onDismiss={togglePanel}
+      >
+        <div className={classNames.panel}>
+          <div style={{ marginBottom: "15px" }}>
+            <Checkbox
+              label="Select All"
+              checked={
+                tempSelectedColumns.length ===
+                columns
+                  .map((col) => col.key)
+                  .filter(
+                    (key) =>
+                      !defaultSelectedColumns.includes(key) ||
+                      tempSelectedColumns.includes(key)
+                  ).length
+              }
+              onChange={(ev, checked) => {
+                if (checked) {
+                  selectAllColumns();
+                } else {
+                  clearAllColumns();
+                }
+              }}
+            />
+          </div>
+          {columns.map((col) => (
+            <div key={col.key} style={{ marginBottom: "15px" }}>
+              <Checkbox
+                key={col.key}
+                label={col.name}
+                checked={
+                  tempSelectedColumns.includes(col.key) ||
+                  defaultSelectedColumns.includes(col.key)
+                }
+                onChange={(ev, checked) => {
+                  if (!defaultSelectedColumns.includes(col.key)) {
+                    setTempSelectedColumns((prevSelectedColumns) =>
+                      checked
+                        ? [...prevSelectedColumns, col.key]
+                        : prevSelectedColumns.filter((key) => key !== col.key)
+                    );
+                  }
+                }}
+                disabled={defaultSelectedColumns.includes(col.key)}
+              />
+            </div>
+          ))}
+          <PrimaryButton
+            style={{ marginTop: "30px" }}
+            text="Apply"
+            onClick={applyChanges}
+          />
+          <DefaultButton
+            style={{ marginTop: "10px", marginLeft: "15px" }}
+            text="Cancel"
+            onClick={togglePanel}
+          />
+        </div>
+      </Panel>
+      {contextualMenuProps && <ContextualMenu {...contextualMenuProps} />}
+    </div>
+  );
+};
+
+export default MyList;
+
+// import * as React from "react";
+// import {
+//   DetailsList,
+//   DetailsListLayoutMode,
+//   SelectionMode,
+//   IColumn,
+// } from "@fluentui/react/lib/DetailsList";
+// import {
+//   Panel,
+//   PanelType,
+//   PrimaryButton,
+//   DefaultButton,
+//   Checkbox,
+//   ShimmeredDetailsList,
+// } from "@fluentui/react";
+// import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+// import {
+//   FluentTheme,
+//   Icon,
+//   TooltipHost,
+//   initializeIcons,
+// } from "@fluentui/react";
+// import axios from "axios";
+// initializeIcons();
+
+// interface IProduct {
+//   id: number;
+//   title: string;
+//   brand: string;
+//   category: string;
+//   rating: number;
+//   stock: number;
+//   price: number;
+//   discountPercentage: number;
+// }
+
+// const defaultSelectedColumns = ["id", "title", "brand", "category"];
+
+// const classNames = mergeStyleSets({
+//   table: {
+//     margin: "auto",
+//   },
+//   panel: {
+//     padding: "20px",
+//   },
+// });
+
+// const MyList = () => {
+//   const [items, setItems] = React.useState<IProduct[]>([]);
+//   const [columns, setColumns] = React.useState<IColumn[]>([]);
+//   const [showPanel, setShowPanel] = React.useState<boolean>(false);
+//   const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+//   const [tempSelectedColumns, setTempSelectedColumns] = React.useState<
+//     string[]
+//   >([]);
+
+//   React.useEffect(() => {
+//     GetProducts(defaultSelectedColumns);
+//   }, []);
+
+//   function GetProducts(selectedCols: string[]) {
+//     axios
+//       .get("https://dummyjson.com/products")
+//       .then((response: { data: any }) => {
+//         const data = response.data;
+//         const responseColumns: IColumn[] = Object.keys(data.products[0]).map(
+//           (col) => ({
+//             key: col,
+//             name: col.charAt(0).toUpperCase() + col.slice(1),
+//             fieldName: col,
+//             minWidth: 80,
+//             maxWidth: 150,
+//             isResizable: true,
+//             isSorted: false,
+//             isSortedDescending: false,
+//           })
+//         );
+
+//         setItems(data.products);
+//         setColumns(responseColumns);
+
+//         const newSelectedColumns = selectedCols.filter((col) =>
+//           responseColumns.some((colObj) => colObj.key === col)
+//         );
+
+//         setSelectedColumns(newSelectedColumns);
+//         setTempSelectedColumns(newSelectedColumns);
+//       })
+//       .catch((error) => console.error("Error fetching data:", error));
+//   }
+
+//   const onColumnClick = (
+//     ev: React.MouseEvent<HTMLElement, MouseEvent>,
+//     column?: IColumn
+//   ): void => {
+//     if (column) {
+//       const newColumns = columns.map((col) => ({
+//         ...col,
+//         isSorted: col.key === column.key,
+//         isSortedDescending: col.key === column.key && !col.isSortedDescending,
+//       }));
+
+//       setColumns(newColumns);
+
+//       const sortedItems = [...items].sort((a, b) => {
+//         const aValue = a[column.fieldName as keyof IProduct];
+//         const bValue = b[column.fieldName as keyof IProduct];
+
+//         if (typeof aValue === "number" && typeof bValue === "number") {
+//           return column.isSortedDescending ? bValue - aValue : aValue - bValue;
+//         }
+
+//         if (typeof aValue === "string" && typeof bValue === "string") {
+//           return column.isSortedDescending
+//             ? bValue.localeCompare(aValue)
+//             : aValue.localeCompare(bValue);
+//         }
+
+//         return 0;
+//       });
+
+//       setItems(sortedItems);
+//     }
+//   };
+
+//   const togglePanel = () => {
+//     setShowPanel(!showPanel);
+//   };
+
+//   const applyChanges = () => {
+//     setSelectedColumns(tempSelectedColumns);
+//     setShowPanel(false);
+//   };
+
+//   const selectAllColumns = () => {
+//     setTempSelectedColumns(
+//       columns
+//         .map((col) => col.key)
+//         .filter(
+//           (key) =>
+//             !defaultSelectedColumns.includes(key) ||
+//             tempSelectedColumns.includes(key)
+//         )
+//     );
+//   };
+
+//   const clearAllColumns = () => {
+//     setTempSelectedColumns([]);
+//   };
+
+//   return (
+//     <div>
+//       <div
+//         style={{
+//           display: "flex",
+//           alignItems: "center",
+//           marginBottom: "10px",
+//           color: FluentTheme.palette.themePrimary,
+//         }}
+//       >
+//         <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+//         <TooltipHost content="Refresh">
+//           <Icon
+//             iconName="Sync"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginRight: "10px",
+//             }}
+//             aria-label="Sync"
+//             onClick={() =>
+//               GetProducts([
+//                 ...defaultSelectedColumns,
+//                 "price",
+//                 "rating",
+//                 "stock",
+//               ])
+//             }
+//           />
+//         </TooltipHost>
+//         <TooltipHost content="Customize Columns">
+//           <Icon
+//             iconName="Table"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginLeft: "10px",
+//             }}
+//             onClick={togglePanel}
+//           />
+//         </TooltipHost>
+//       </div>
+
+//       <ShimmeredDetailsList
+//         items={items}
+//         columns={columns.filter(
+//           (col) =>
+//             selectedColumns.includes(col.key) ||
+//             defaultSelectedColumns.includes(col.key)
+//         )}
+//         setKey="set"
+//         layoutMode={DetailsListLayoutMode.justified}
+//         selectionMode={SelectionMode.none}
+//         isHeaderVisible={true}
+//         onColumnHeaderClick={onColumnClick as any}
+//         className={classNames.table}
+//       />
+
+//       <Panel
+//         style={{ marginTop: "50px", marginBottom: "40px" }}
+//         isOpen={showPanel}
+//         type={PanelType.smallFixedFar}
+//         headerText="Customize Columns"
+//         onDismiss={togglePanel}
+//       >
+//         <div className={classNames.panel}>
+//           <div style={{ marginBottom: "15px" }}>
+//             <Checkbox
+//               label="Select All"
+//               checked={
+//                 tempSelectedColumns.length ===
+//                 columns
+//                   .map((col) => col.key)
+//                   .filter(
+//                     (key) =>
+//                       !defaultSelectedColumns.includes(key) ||
+//                       tempSelectedColumns.includes(key)
+//                   ).length
+//               }
+//               onChange={(ev, checked) => {
+//                 if (checked) {
+//                   selectAllColumns();
+//                 } else {
+//                   clearAllColumns();
+//                 }
+//               }}
+//             />
+//           </div>
+//           {columns.map((col) => (
+//             <div key={col.key} style={{ marginBottom: "15px" }}>
+//               <Checkbox
+//                 key={col.key}
+//                 label={col.name}
+//                 checked={
+//                   tempSelectedColumns.includes(col.key) ||
+//                   defaultSelectedColumns.includes(col.key)
+//                 }
+//                 onChange={(ev, checked) => {
+//                   if (!defaultSelectedColumns.includes(col.key)) {
+//                     setTempSelectedColumns((prevSelectedColumns) =>
+//                       checked
+//                         ? [...prevSelectedColumns, col.key]
+//                         : prevSelectedColumns.filter((key) => key !== col.key)
+//                     );
+//                   }
+//                 }}
+//                 disabled={defaultSelectedColumns.includes(col.key)}
+//               />
+//             </div>
+//           ))}
+//           <PrimaryButton
+//             style={{ marginTop: "30px" }}
+//             text="Apply"
+//             onClick={applyChanges}
+//           />
+//           <DefaultButton
+//             style={{ marginTop: "10px", marginLeft: "15px" }}
+//             text="Cancel"
+//             onClick={togglePanel}
+//           />
+//         </div>
+//       </Panel>
+//     </div>
+//   );
+// };
+
+// export default MyList;
+
+// import * as React from "react";
+// import {
+//   DetailsList,
+//   DetailsListLayoutMode,
+//   SelectionMode,
+//   IColumn,
+// } from "@fluentui/react/lib/DetailsList";
+// import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+// import {
+//   ContextualMenu,
+//   DirectionalHint,
+//   FluentTheme,
+//   IContextualMenuItem,
+//   IContextualMenuProps,
+//   Icon,
+//   TooltipHost,
+//   initializeIcons,
+// } from "@fluentui/react";
+// import axios from "axios";
+// initializeIcons();
+
+// interface IProduct {
+//   id: number;
+//   title: string;
+//   brand: string;
+//   category: string;
+//   rating: number;
+//   stock: number;
+//   price: number;
+//   discountPercentage: number;
+// }
+
+// const classNames = mergeStyleSets({
+//   table: {
+//     margin: "auto",
+//   },
+// });
+
+// const MyList = () => {
+//   const [items, setItems] = React.useState<IProduct[]>([]);
+//   const [columns, setColumns] = React.useState<IColumn[]>([
+//     {
+//       key: "id",
+//       name: "ID",
+//       fieldName: "id",
+//       minWidth: 50,
+//       maxWidth: 100,
+//       isResizable: true,
+//     },
+//     {
+//       key: "title",
+//       name: "Title",
+//       fieldName: "title",
+//       minWidth: 100,
+//       maxWidth: 200,
+//       isResizable: true,
+//     },
+//     // Add more columns here...
+//   ]);
+
+//   const [contextualMenuProps, setContextualMenuProps] = React.useState<
+//     IContextualMenuProps | undefined
+//   >();
+
+//   React.useEffect(() => {
+//     GetProducts();
+//   }, []);
+
+//   function GetProducts() {
+//     axios
+//       .get("https://dummyjson.com/products")
+//       .then((response: { data: any }) => {
+//         const data = response.data;
+//         setItems(data.products);
+//       })
+//       .catch((error) => console.error("Error fetching data:", error));
+//   }
+
+//   const onColumnClick = (
+//     ev?: React.MouseEvent<HTMLElement, MouseEvent>,
+//     column?: IColumn
+//   ): void => {
+//     if (column) {
+//       const menuItems: IContextualMenuItem[] = [
+//         {
+//           key: "filter",
+//           text: "FilterBy",
+//           onClick: () => {
+//             // Implement your filter logic here
+//           },
+//         },
+//         {
+//           key: "sort",
+//           text: "Sort",
+//           onClick: () => {
+//             sortItems(column);
+//           },
+//         },
+//       ];
+
+//       setContextualMenuProps({
+//         items: menuItems,
+//         target: ev!.currentTarget as HTMLElement,
+//         directionalHintFixed: true,
+//         directionalHint: DirectionalHint.bottomRightEdge,
+//         gapSpace: 10,
+//         isBeakVisible: true,
+//         onDismiss: () => setContextualMenuProps(undefined),
+//       });
+//     }
+//   };
+
+//   const sortItems = (column: IColumn) => {
+//     const newColumns = columns.map((col) => ({
+//       ...col,
+//       isSorted: col.key === column.key,
+//       isSortedDescending: col.key === column.key && !col.isSortedDescending,
+//     }));
+
+//     setColumns(newColumns);
+
+//     const sortedItems = [...items].sort((a, b) => {
+//       const aValue = a[column.fieldName as keyof IProduct];
+//       const bValue = b[column.fieldName as keyof IProduct];
+//       return aValue.toString().localeCompare(bValue.toString());
+//     });
+
+//     if (column.isSortedDescending) {
+//       sortedItems.reverse();
+//     }
+
+//     setItems(sortedItems);
+//     setContextualMenuProps(undefined);
+//   };
+
+//   return (
+//     <div>
+//       <div
+//         style={{
+//           display: "flex",
+//           alignItems: "center",
+//           marginBottom: "10px",
+//           color: FluentTheme.palette.themePrimary,
+//         }}
+//       >
+//         <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+//         <TooltipHost content="Refresh">
+//           <Icon
+//             iconName="Sync"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginRight: "10px",
+//             }}
+//             aria-label="Sync"
+//             onClick={() => GetProducts()}
+//           />
+//         </TooltipHost>
+//       </div>
+
+//       <DetailsList
+//         items={items}
+//         columns={columns}
+//         setKey="set"
+//         layoutMode={DetailsListLayoutMode.justified}
+//         selectionMode={SelectionMode.none}
+//         isHeaderVisible={true}
+//         onColumnHeaderClick={onColumnClick}
+//         className={classNames.table}
+//       />
+//       {contextualMenuProps && <ContextualMenu {...contextualMenuProps} />}
+//     </div>
+//   );
+// };
+
+// export default MyList;
+
+// import * as React from "react";
+// import {
+//   DetailsList,
+//   DetailsListLayoutMode,
+//   SelectionMode,
+//   IColumn,
+// } from "@fluentui/react/lib/DetailsList";
+// import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+// import {
+//   FluentTheme,
+//   Icon,
+//   TooltipHost,
+//   initializeIcons,
+// } from "@fluentui/react";
+// import axios from "axios";
+// initializeIcons();
+
+// interface IProduct {
+//   id: number;
+//   title: string;
+//   brand: string;
+//   category: string;
+//   rating: number;
+//   stock: number;
+//   price: number;
+//   discountPercentage: number;
+// }
+
+// const classNames = mergeStyleSets({
+//   table: {
+//     margin: "auto",
+//   },
+// });
+
+// const MyList = () => {
+//   const [items, setItems] = React.useState<IProduct[]>([]);
+//   const [columns, setColumns] = React.useState<IColumn[]>([
+//     {
+//       key: "id",
+//       name: "ID",
+//       fieldName: "id",
+//       minWidth: 50,
+//       maxWidth: 100,
+//       isResizable: true,
+//     },
+//     {
+//       key: "title",
+//       name: "Title",
+//       fieldName: "title",
+//       minWidth: 100,
+//       maxWidth: 200,
+//       isResizable: true,
+//     },
+//     // Add more columns here...
+//   ]);
+
+//   React.useEffect(() => {
+//     GetProducts();
+//   }, []);
+
+//   function GetProducts() {
+//     axios
+//       .get("https://dummyjson.com/products")
+//       .then((response: { data: any }) => {
+//         const data = response.data;
+//         setItems(data.products);
+//       })
+//       .catch((error) => console.error("Error fetching data:", error));
+//   }
+
+//   const onColumnClick = (
+//     ev: React.MouseEvent<HTMLElement, MouseEvent>,
+//     column?: IColumn
+//   ): void => {
+//     if (column) {
+//       const newColumns = columns.map((col) => ({
+//         ...col,
+//         isSorted: col.key === column.key,
+//         isSortedDescending: col.key === column.key && !col.isSortedDescending,
+//       }));
+
+//       setColumns(newColumns);
+
+//       const sortedItems = [...items].sort((a, b) => {
+//         const aValue = a[column.fieldName as keyof IProduct];
+//         const bValue = b[column.fieldName as keyof IProduct];
+//         return aValue.toString().localeCompare(bValue.toString());
+//       });
+
+//       if (column.isSortedDescending) {
+//         sortedItems.reverse();
+//       }
+
+//       setItems(sortedItems);
+//     }
+//   };
+
+//   return (
+//     <div>
+//       <div
+//         style={{
+//           display: "flex",
+//           alignItems: "center",
+//           marginBottom: "10px",
+//           color: FluentTheme.palette.themePrimary,
+//         }}
+//       >
+//         <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+//         <TooltipHost content="Refresh">
+//           <Icon
+//             iconName="Sync"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginRight: "10px",
+//             }}
+//             aria-label="Sync"
+//             onClick={() => GetProducts()}
+//           />
+//         </TooltipHost>
+//       </div>
+
+//       <DetailsList
+//         items={items}
+//         columns={columns}
+//         setKey="set"
+//         layoutMode={DetailsListLayoutMode.justified}
+//         selectionMode={SelectionMode.none}
+//         isHeaderVisible={true}
+//         onColumnHeaderClick={onColumnClick as any} // Directly cast onColumnClick to any
+//         className={classNames.table}
+//       />
+//     </div>
+//   );
+// };
+
+// export default MyList;
+
+// import * as React from "react";
+// import {
+//   DetailsList,
+//   DetailsListLayoutMode,
+//   SelectionMode,
+//   IColumn,
+// } from "@fluentui/react/lib/DetailsList";
+// import {
+//   Panel,
+//   PanelType,
+//   PrimaryButton,
+//   DefaultButton,
+//   Checkbox,
+//   ShimmeredDetailsList,
+// } from "@fluentui/react";
+// import { mergeStyleSets } from "@fluentui/react/lib/Styling";
+// import {
+//   FluentTheme,
+//   Icon,
+//   TooltipHost,
+//   initializeIcons,
+// } from "@fluentui/react";
+// import axios from "axios";
+// initializeIcons();
+
+// interface IProduct {
+//   id: number;
+//   title: string;
+//   brand: string;
+//   category: string;
+//   rating: number;
+//   stock: number;
+//   price: number;
+//   discountPercentage: number;
+// }
+
+// const defaultSelectedColumns = ["id", "title", "brand", "category"];
+
+// const classNames = mergeStyleSets({
+//   table: {
+//     margin: "auto",
+//   },
+//   panel: {
+//     padding: "20px",
+//   },
+// });
+
+// const MyList = () => {
+//   const [items, setItems] = React.useState<IProduct[]>([]);
+//   const [columns, setColumns] = React.useState<IColumn[]>([]);
+//   const [showPanel, setShowPanel] = React.useState<boolean>(false);
+//   const [selectedColumns, setSelectedColumns] = React.useState<string[]>([]);
+//   const [tempSelectedColumns, setTempSelectedColumns] = React.useState<
+//     string[]
+//   >([]);
+
+//   React.useEffect(() => {
+//     GetProducts(defaultSelectedColumns);
+//   }, []);
+
+//   function GetProducts(selectedCols: string[]) {
+//     axios
+//       .get("https://dummyjson.com/products")
+//       .then((response: { data: any }) => {
+//         const data = response.data;
+//         const responseColumns: IColumn[] = Object.keys(data.products[0]).map(
+//           (col) => ({
+//             key: col,
+//             name: col.charAt(0).toUpperCase() + col.slice(1),
+//             fieldName: col,
+//             minWidth: 80,
+//             maxWidth: 150,
+//             isResizable: true,
+//             isSorted: false,
+//             isSortedDescending: false,
+//           })
+//         );
+
+//         setItems(data.products);
+//         setColumns(responseColumns);
+
+//         const newSelectedColumns = selectedCols.filter((col) =>
+//           responseColumns.some((colObj) => colObj.key === col)
+//         );
+
+//         setSelectedColumns(newSelectedColumns);
+//         setTempSelectedColumns(newSelectedColumns);
+//       })
+//       .catch((error) => console.error("Error fetching data:", error));
+//   }
+
+//   const onColumnClick = (
+//     ev: React.MouseEvent<HTMLElement, MouseEvent>,
+//     column?: IColumn
+//   ): void => {
+//     if (column) {
+//       const newColumns = columns.map((col) => ({
+//         ...col,
+//         isSorted: col.key === column.key,
+//         isSortedDescending: col.key === column.key && !col.isSortedDescending,
+//       }));
+
+//       setColumns(newColumns);
+
+//       const sortedItems = [...items].sort((a, b) => {
+//         const aValue = a[column.fieldName as keyof IProduct];
+//         const bValue = b[column.fieldName as keyof IProduct];
+
+//         if (typeof aValue === "number" && typeof bValue === "number") {
+//           // Numeric comparison
+//           return column.isSortedDescending ? bValue - aValue : aValue - bValue;
+//         }
+
+//         if (typeof aValue === "string" && typeof bValue === "string") {
+//           // String comparison
+//           return column.isSortedDescending
+//             ? bValue.localeCompare(aValue)
+//             : aValue.localeCompare(bValue);
+//         }
+
+//         return 0; // Fallback for other types (e.g., undefined)
+//       });
+
+//       setItems(sortedItems);
+//     }
+//   };
+
+//   const togglePanel = () => {
+//     setShowPanel(!showPanel);
+//   };
+
+//   const applyChanges = () => {
+//     setSelectedColumns(tempSelectedColumns);
+//     setShowPanel(false);
+//   };
+
+//   const selectAllColumns = () => {
+//     setTempSelectedColumns(
+//       columns
+//         .map((col) => col.key)
+//         .filter(
+//           (key) =>
+//             !defaultSelectedColumns.includes(key) ||
+//             tempSelectedColumns.includes(key)
+//         )
+//     );
+//   };
+
+//   const clearAllColumns = () => {
+//     setTempSelectedColumns([]);
+//   };
+
+//   return (
+//     <div>
+//       <div
+//         style={{
+//           display: "flex",
+//           alignItems: "center",
+//           marginBottom: "10px",
+//           color: FluentTheme.palette.themePrimary,
+//         }}
+//       >
+//         <h5 style={{ marginRight: "auto" }}>MyRequestList</h5>
+//         <TooltipHost content="Refresh">
+//           <Icon
+//             iconName="Sync"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginRight: "10px",
+//             }}
+//             aria-label="Sync"
+//             onClick={() =>
+//               GetProducts([
+//                 ...defaultSelectedColumns,
+//                 "price",
+//                 "rating",
+//                 "stock",
+//               ])
+//             }
+//           />
+//         </TooltipHost>
+//         <TooltipHost content="Customize Columns">
+//           <Icon
+//             iconName="Table"
+//             style={{
+//               cursor: "pointer",
+//               color: FluentTheme.palette.themePrimary,
+//               fontSize: "20px",
+//               transition: "color 0.3s",
+//               marginLeft: "10px",
+//             }}
+//             onClick={togglePanel}
+//           />
+//         </TooltipHost>
+//       </div>
+
+//       <ShimmeredDetailsList
+//         items={items}
+//         columns={columns.filter(
+//           (col) =>
+//             selectedColumns.includes(col.key) ||
+//             defaultSelectedColumns.includes(col.key)
+//         )}
+//         setKey="set"
+//         layoutMode={DetailsListLayoutMode.justified}
+//         selectionMode={SelectionMode.none}
+//         isHeaderVisible={true}
+//         onColumnHeaderClick={onColumnClick as any}
+//         className={classNames.table}
+//       />
+
+//       <Panel
+//         style={{ marginTop: "50px", marginBottom: "40px" }}
+//         isOpen={showPanel}
+//         type={PanelType.smallFixedFar}
+//         headerText="Customize Columns"
+//         onDismiss={togglePanel}
+//       >
+//         <div className={classNames.panel}>
+//           <div style={{ marginBottom: "15px" }}>
+//             <Checkbox
+//               label="Select All"
+//               checked={
+//                 tempSelectedColumns.length ===
+//                 columns
+//                   .map((col) => col.key)
+//                   .filter(
+//                     (key) =>
+//                       !defaultSelectedColumns.includes(key) ||
+//                       tempSelectedColumns.includes(key)
+//                   ).length
+//               }
+//               onChange={(ev, checked) => {
+//                 if (checked) {
+//                   selectAllColumns();
+//                 } else {
+//                   clearAllColumns();
+//                 }
+//               }}
+//             />
+//           </div>
+//           {columns.map((col) => (
+//             <div key={col.key} style={{ marginBottom: "15px" }}>
+//               <Checkbox
+//                 key={col.key}
+//                 label={col.name}
+//                 checked={
+//                   tempSelectedColumns.includes(col.key) ||
+//                   defaultSelectedColumns.includes(col.key)
+//                 }
+//                 onChange={(ev, checked) => {
+//                   if (!defaultSelectedColumns.includes(col.key)) {
+//                     setTempSelectedColumns((prevSelectedColumns) =>
+//                       checked
+//                         ? [...prevSelectedColumns, col.key]
+//                         : prevSelectedColumns.filter((key) => key !== col.key)
+//                     );
+//                   }
+//                 }}
+//                 disabled={defaultSelectedColumns.includes(col.key)}
+//               />
+//             </div>
+//           ))}
+//           <PrimaryButton
+//             style={{ marginTop: "30px" }}
+//             text="Apply"
+//             onClick={applyChanges}
+//           />
+//           <DefaultButton
+//             style={{ marginTop: "10px", marginLeft: "15px" }}
+//             text="Cancel"
+//             onClick={togglePanel}
+//           />
+//         </div>
+//       </Panel>
+//     </div>
+//   );
+// };
+
+// export default MyList;
+
+
+
 /////
 Plane code
 

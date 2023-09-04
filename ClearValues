@@ -1,0 +1,165 @@
+Child
+============
+
+// CustomTextField.tsx
+import React from "react";
+import {
+  mergeStyleSets,
+  DelayedRender,
+  Callout,
+  TextField,
+  Icon,
+} from "@fluentui/react";
+import { useBoolean, useId } from "@fluentui/react-hooks";
+
+interface CustomTextFieldProps {
+  label: string;
+  callOutContent: React.ReactNode;
+  width: number;
+  maxHeight: number;
+  errorMessage: string | undefined;
+  onChange: (newValue?: string) => void;
+  value: string;
+}
+
+export const CustomTextField: React.FC<CustomTextFieldProps> = ({
+  label,
+  callOutContent,
+  width,
+  maxHeight,
+  errorMessage,
+  onChange,
+  value,
+}) => {
+  const [isCalloutVisible, { toggle: toggleIsCalloutVisible }] =
+    useBoolean(false);
+  const textFieldId = useId("callout-textfield");
+  const iconButtonId = useId("callout-icon");
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.row}>
+        <span
+          id={iconButtonId}
+          className={styles.iconButton}
+          onClick={() => toggleIsCalloutVisible()}
+        >
+          <span className={styles.label}>{label}</span>
+          <Icon
+            iconName="Info"
+            style={{
+              color: "blue",
+              cursor: "pointer",
+              paddingLeft: "5px",
+            }}
+          />
+        </span>
+      </div>
+      <div className={styles.row}>
+        <TextField
+          id={textFieldId}
+          placeholder="Enter text"
+          className={styles.textField}
+          errorMessage={errorMessage}
+          onChange={(_, newValue) => onChange(newValue)} // Call onChange with the new value
+          value={value} // Pass the value to the TextField
+        />
+      </div>
+
+      {isCalloutVisible && (
+        <Callout
+          directionalHint={12}
+          className={styles.callout}
+          target={`#${iconButtonId}`}
+          onDismiss={() => toggleIsCalloutVisible()}
+          role="alert"
+        >
+          <DelayedRender>
+            <div style={{ width, maxHeight, overflowY: "auto" }}>
+              {callOutContent}
+            </div>
+          </DelayedRender>
+        </Callout>
+      )}
+    </div>
+  );
+};
+
+const styles = mergeStyleSets({
+  container: {
+    border: "1px solid #ccc",
+    padding: 8,
+  },
+  row: {
+    display: "flex",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  label: {
+    marginLeft: 8,
+  },
+  iconButton: {
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+  },
+  textField: {
+    flex: 1,
+  },
+  callout: {
+    padding: "20px 24px",
+  },
+});
+
+
+parent 
+===============
+// ParentComponent.tsx
+import React, { useState } from "react";
+import { CustomTextField } from "../CustomTextField";
+
+export const Mytask: React.FC = () => {
+  const [textValue, setTextValue] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(
+    undefined
+  );
+
+  const handleTextChange = (newValue?: string) => {
+    setTextValue(newValue || "");
+  };
+
+  const assignValue = () => {
+    // You can add validation logic here if needed
+    if (textValue.trim() === "") {
+      setErrorMessage("Text cannot be empty");
+    } else {
+      setErrorMessage(undefined);
+      // Handle assigning the value as needed
+      // For example, you can store it in a state variable or send it to an API
+    }
+  };
+
+  const clearValue = () => {
+    setTextValue("");
+    setErrorMessage(undefined);
+  };
+
+  return (
+    <div>
+      <CustomTextField
+        label="Custom Text Field"
+        callOutContent={<div>Some helpful information here</div>}
+        width={300}
+        maxHeight={200}
+        errorMessage={errorMessage}
+        onChange={handleTextChange}
+        value={textValue}
+      />
+      <div>
+        <button onClick={assignValue}>Assign Value</button>
+        <button onClick={clearValue}>Clear Value</button>
+      </div>
+    </div>
+  );
+};
+export default Mytask;
